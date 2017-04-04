@@ -127,6 +127,14 @@ class DecoratorTests(TestCase):
         func = decorators.has_side_effects('foo')(test_func_no_docstring)
         func('bar', kwarg1='baz')
         mock_run.assert_called_with('foo', 'bar', kwarg1='baz')
+        mock_run.reset_mock()
+        # forcible ignore the side effects via the run_on_exit kwarg
+        func = (
+            decorators.has_side_effects('foo', run_on_exit=lambda r: False)
+            (test_func_no_docstring)
+        )
+        func('bar', kwarg1='baz')
+        mock_run.assert_not_called()
 
     @mock.patch('side_effects.decorators.register_side_effect')
     def test_is_side_effect_of(self, mock_register):
