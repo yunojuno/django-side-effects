@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+
 
 import json
 
@@ -35,12 +35,12 @@ class Command(BaseCommand):
 
     def print_raw(self):
         """Print out the fully-qualified named for each mapped function."""
-        raw = {label: [fname(f) for f in funcs] for label, funcs in _registry.iteritems()}
+        raw = {label: [fname(f) for f in funcs] for label, funcs in _registry.items()}
         self.stdout.write(json.dumps(raw, indent=4))
 
     def print_verbose(self):
         """Print the entire docstring for each mapped function."""
-        for label, funcs in _registry.iteritems():
+        for label, funcs in _registry.items():
             self.stdout.write('')
             self.stdout.write(label)
             self.stdout.write('')
@@ -53,7 +53,7 @@ class Command(BaseCommand):
 
     def print_default(self):
         """Print the first line of the docstring for each mapped function."""
-        for label, funcs in _registry.iteritems():
+        for label, funcs in _registry.items():
             self.stdout.write('')
             self.stdout.write(label)
             for func in funcs:
