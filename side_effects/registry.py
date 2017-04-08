@@ -3,6 +3,8 @@
 This module contains the Registry class that is responsible for managing
 all of the registered side-effects.
 """
+from __future__ import unicode_literals
+
 from collections import defaultdict
 import logging
 import threading
@@ -88,7 +90,7 @@ def _run_func(func, *args, **kwargs):
     """Run a single side-effect function and handle errors."""
     try:
         func(*args, **kwargs)
-    except:
+    except Exception:
         logger.exception("Error running side_effect function '%s'", fname(func))
 
 

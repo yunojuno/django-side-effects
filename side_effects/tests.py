@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-
-
-from unittest import mock
+from __future__ import unicode_literals
 
 from django.test import TestCase
 
 from . import registry, decorators
+from .compat import mock
 
 
 def test_func_no_docstring(arg1, kwarg1=None):
