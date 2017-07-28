@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import absolute_import
+
+import mock
 
 from django.test import TestCase
 
-from . import registry, decorators
-from .compat import mock
+from . import registry, decorators, settings
 
 
 def test_func_no_docstring(arg1, kwarg1=None):
@@ -100,6 +101,10 @@ class RegistryFunctionTests(TestCase):
             self.assertRaises(Exception, test_func_exception)
             registry._run_func(test_func_exception)
             self.assertEqual(mock_logger.exception.call_count, 1)
+
+        # if the func raises an exception we should log it but not fail
+        settings.SUPPRESS_ERRORS = False
+        self.assertRaises(Exception, registry._run_func, test_func_exception)
 
 
 class RegistryTests(TestCase):
