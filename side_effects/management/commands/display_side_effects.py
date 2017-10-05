@@ -58,4 +58,7 @@ class Command(BaseCommand):
             self.stdout.write(label)
             for func in funcs:
                 docs = docstring(func)
-                self.stdout.write('  - %s' % docs[0])
+                if docs is None:
+                    self.stdout.write('*** DOCSTRING MISSING: %s ***' % func.__name__)
+                else:
+                    self.stdout.write('  - %s' % docs[0])
