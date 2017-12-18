@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module contains the Registry class that is responsible for managing
 all of the registered side-effects.
@@ -8,7 +7,6 @@ import logging
 import threading
 
 from . import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +71,11 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
+    def run_side_effects(self, label, *args, **kwargs):
+        """Run registered side-effects functions."""
+        for func in self[label]:
+            _run_func(func, *args, **kwargs)
+
 
 def register_side_effect(label, func):
     """Helper function to add a side-effect function to the registry."""
@@ -83,8 +86,7 @@ def register_side_effect(label, func):
 
 def run_side_effects(label, *args, **kwargs):
     """Run all of the side-effect functions registered for a label."""
-    for func in _registry[label]:
-        _run_func(func, *args, **kwargs)
+    _registry.run_side_effects(label, *args, **kwargs)
 
 
 def _run_func(func, *args, **kwargs):

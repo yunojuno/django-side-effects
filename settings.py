@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # minimal settings required for tests to run
 DATABASES = {
     'default': {
