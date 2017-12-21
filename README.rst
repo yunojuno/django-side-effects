@@ -9,6 +9,12 @@ Django Side Effects
 
 Django app for managing external side effects.
 
+Python2/3
+---------
+
+**This project is now Python3 only on master.**
+
+The legacy Python2 code is now parked in the python27 branch.
 
 Background
 ----------
@@ -206,6 +212,32 @@ If you want to run the tests manually, make sure you install the requirements, a
     $ tox
 
 If you are hacking on the project, please keep coverage up.
+
+NB If you implement side-effects in your project, you will most likely want to
+be able to turn off the side-effects when testing your own code (so that you are not actually sending emails, updating systems).
+
+The easiest way to do this is to mock the `Registry.run_side_effects` method.
+
+.. code:: python
+
+    @has_side_effects('do_foo')
+    def foo():
+        pass
+
+    def test_foo(mock_run):
+
+        # registry.run_side_effects will be called after foo runs,
+        # but the internal Registry.run_side_effects method is mocked
+        # out, so no side_effects will fire.
+        with mock.patch.object(Registry, 'run_side_effects'):
+            do_foo()
+
+        # if you want to confirm that the run method was hooked up, then
+        # check the mock.
+        with mock.patch.object(Registry, 'run_side_effects') as mock_run:
+            do_foo()
+            mock_run.assert_called_with('do_foo')
+
 
 Contributing
 ------------

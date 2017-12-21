@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
+from unittest import mock
 
 from django.test import TestCase
 
 from . import registry, decorators, settings
-from .compat import mock
 
 
 def test_func_no_docstring(arg1, kwarg1=None):
@@ -81,13 +79,23 @@ class RegistryFunctionTests(TestCase):
         registry.run_side_effects('foo')
         self.assertEqual(mock_func.call_count, 0)
 
+        mock_func.reset_mock()
         registry.register_side_effect('foo', test_func_no_docstring)
         registry.run_side_effects('foo')
         self.assertEqual(mock_func.call_count, 1)
 
+        mock_func.reset_mock()
+        # NB this is an important pattern - can be used to mock out
+        # side effects in django project tests.
+        with mock.patch.object(registry.Registry, 'run_side_effects') as rse:
+            registry.run_side_effects('foo')
+            rse.assert_called_once_with('foo')
+            self.assertEqual(mock_func.call_count, 0)
+
+        mock_func.reset_mock()
         registry.register_side_effect('foo', test_func_one_line)
         registry.run_side_effects('foo')
-        self.assertEqual(mock_func.call_count, 3)
+        self.assertEqual(mock_func.call_count, 2)
         del registry._registry['foo']
 
     def test__run_func(self):
