@@ -73,6 +73,9 @@ class Registry(defaultdict):
 
     def run_side_effects(self, label, *args, **kwargs):
         """Run registered side-effects functions."""
+        if settings.TEST_MODE:
+            logger.debug("Suppressing side-effects: '%s'", label)
+            return
         for func in self[label]:
             _run_func(func, *args, **kwargs)
 

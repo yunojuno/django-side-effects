@@ -85,17 +85,18 @@ class RegistryFunctionTests(TestCase):
         self.assertEqual(mock_func.call_count, 1)
 
         mock_func.reset_mock()
-        # NB this is an important pattern - can be used to mock out
-        # side effects in django project tests.
-        with mock.patch.object(registry.Registry, 'run_side_effects') as rse:
-            registry.run_side_effects('foo')
-            rse.assert_called_once_with('foo')
-            self.assertEqual(mock_func.call_count, 0)
-
-        mock_func.reset_mock()
         registry.register_side_effect('foo', test_func_one_line)
         registry.run_side_effects('foo')
         self.assertEqual(mock_func.call_count, 2)
+
+        mock_func.reset_mock()
+        with mock.patch('side_effects.settings.TEST_MODE', True):
+            registry.run_side_effects('foo')
+            self.assertEqual(mock_func.call_count, 0)
+        with mock.patch('side_effects.settings.TEST_MODE', False):
+            registry.run_side_effects('foo')
+            self.assertEqual(mock_func.call_count, 2)
+
         del registry._registry['foo']
 
     def test__run_func(self):
