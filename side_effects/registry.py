@@ -6,6 +6,8 @@ from collections import defaultdict
 import logging
 import threading
 
+from django.dispatch import Signal
+
 from . import settings
 
 logger = logging.getLogger(__name__)
@@ -41,8 +43,14 @@ class Registry(defaultdict):
 
     """
 
+    # if using the disable_side_effects context manager or decorator,
+    # then this signal is used to communicate details of events that
+    # would have fired, but have been suppressed.
+    suppressed_side_effect = Signal(providing_args=["label"])
+
     def __init__(self):
         self._lock = threading.Lock()
+        self._suppress = False
         super(Registry, self).__init__(list)
 
     def contains(self, label, func):
@@ -71,13 +79,56 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
-    def run_side_effects(self, label, *args, **kwargs):
-        """Run registered side-effects functions."""
-        if settings.TEST_MODE:
-            logger.debug("Suppressing side-effects: '%s'", label)
-            return
+    def _run_side_effects(self, label, *args, **kwargs):
         for func in self[label]:
             _run_func(func, *args, **kwargs)
+
+    def run_side_effects(self, label, *args, **kwargs):
+        """Run registered side-effects functions, or suppress as appropriate.
+
+        If TEST_MODE is True, then no side-effects are run.
+
+        If the _suppress attr is True, then the side-effects are not run, but the
+        suppressed_side_effect signal is sent - this is primarily used by the
+        disable_side_effects context manager to register which side-effects events
+        were suppressed (for testing purposes).
+
+        """
+        if settings.TEST_MODE:
+            logger.debug("Ignoring all side-effects (TEST_MODE)")
+        elif self._suppress:
+            self.suppressed_side_effect.send(Registry, label=label)
+        else:
+            self._run_side_effects(label, *args, **kwargs)
+
+
+class disable_side_effects():
+
+    """Context manager used to disable side-effects temporarily.
+
+    This works by setting the _suppress attribute on the registry object,
+    and then connecting a receiver to the Signal that emits details of
+    events that were suppressed.
+
+    NB this changes global state and, ironically, may have unintended consequences
+
+    """
+
+    def __init__(self):
+        self.events = []
+        pass
+
+    def __enter__(self):
+        _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid='suppress')
+        _registry._suppress = True
+        return self.events
+
+    def __exit__(self, *args):
+        _registry._suppress = False
+        _registry.suppressed_side_effect.disconnect(self.on_event)
+
+    def on_event(self, sender, **kwargs):
+        self.events.append(kwargs['label'])
 
 
 def register_side_effect(label, func):
@@ -97,10 +148,10 @@ def _run_func(func, *args, **kwargs):
     try:
         func(*args, **kwargs)
     except Exception:
-        if settings.SUPPRESS_ERRORS:
-            logger.exception("Error running side_effect function '%s'", fname(func))
-        else:
+        if settings.ABORT_ON_ERROR:
             raise
+        else:
+            logger.exception("Error running side_effect function '%s'", fname(func))
 
 
 # global registry

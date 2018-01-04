@@ -122,13 +122,13 @@ that implement the side effects to the origin function:
 .. code:: python
 
     # bind this function to the event 'update_profile'
-    @side_effects.decorators.is_side_effect_of('update_profile')
+    @is_side_effect_of('update_profile')
     def send_updates(*args, **kwargs):
         """Update CRM system."""
         pass
 
     # bind this function also to 'update_profile'
-    @side_effects.decorators.is_side_effect_of('update_profile')
+    @is_side_effect_of('update_profile')
     def send_notifications(*args, **kwargs):
         """Notify account managers."""
         pass
@@ -213,10 +213,9 @@ If you want to run the tests manually, make sure you install the requirements, a
 
 If you are hacking on the project, please keep coverage up.
 
-NB If you implement side-effects in your project, you will most likely want to
-be able to turn off the side-effects when testing your own code (so that you are not actually sending emails, updating systems).
+NB If you implement side-effects in your project, you will most likely want to be able to turn off the side-effects when testing your own code (so that you are not actually sending emails, updating systems), but you also probably want to know that the side-effects events that you are expecting are fired.
 
-The easiest way to do this is to mock the `Registry.run_side_effects` method.
+The following code snippet shows how to use the `disable_side_effects` context manager, which returns a list of all the side-effects events that are fired. There is a matching function decorator, which will append the events list as an arg to the decorated function, in the same manner that `unittest.mock.patch` does.
 
 .. code:: python
 
@@ -224,20 +223,23 @@ The easiest way to do this is to mock the `Registry.run_side_effects` method.
     def foo():
         pass
 
-    def test_foo(mock_run):
+    def test_foo():
 
-        # registry.run_side_effects will be called after foo runs,
-        # but the internal Registry.run_side_effects method is mocked
-        # out, so no side_effects will fire.
-        with mock.patch.object(Registry, 'run_side_effects'):
-            do_foo()
+        # to disable side-effects temporarily, use decorator
+        with disable_side_effects() as events:
+            foo()
+            assert events = ['do_foo']
+            foo()
+            assert events = ['do_foo', 'do_foo']
 
-        # if you want to confirm that the run method was hooked up, then
-        # check the mock.
-        with mock.patch.object(Registry, 'run_side_effects') as mock_run:
-            do_foo()
-            mock_run.assert_called_with('do_foo')
 
+    # events list is added to the test function as an arg
+    @disable_side_effects()
+    def test_foo_without_side_effects(events):
+        foo()
+        assert events = ['do_foo']
+
+In addition to these testing tools there is a universal 'kill-switch' which can be set using the env var `SIDE_EFFECTS_TEST_MODE=True`. This will completely disable all side-effects events. It is a useful tool when you are migrating a project over to the side_effects pattern - as it can highlight where existing tests are relying on side-effects from firing. Use with caution.
 
 Contributing
 ------------
@@ -247,4 +249,4 @@ Standard GH rules apply: clone the repo to your own account, create a branch, ma
 Status
 ------
 
-This project is very early in its development. We are using it at YunoJuno, but 'caveat emptor'. It does what we need it to do right now, and we will extend it as we evolve. If you need or want additional features, get involved :-).
+We are using it at YunoJuno, but 'caveat emptor'. It does what we need it to do right now, and we will extend it as we evolve. If you need or want additional features, get involved :-).
