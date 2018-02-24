@@ -65,6 +65,7 @@ class RegistryFunctionTests(TestCase):
         )
 
     def test_register_side_effect(self):
+        registry._registry.clear()
         registry.register_side_effect('foo', test_func_no_docstring)
         self.assertTrue(registry._registry.contains('foo', test_func_no_docstring))
         self.assertFalse(registry._registry.contains('foo', test_func_one_line))
@@ -111,7 +112,7 @@ class RegistryFunctionTests(TestCase):
             self.assertEqual(mock_logger.exception.call_count, 1)
 
         # if the func raises an exception we should log it but not fail
-        settings.SUPPRESS_ERRORS = False
+        settings.ABORT_ON_ERROR = True
         self.assertRaises(Exception, registry._run_func, test_func_exception)
 
 
@@ -131,7 +132,7 @@ class DecoratorTests(TestCase):
 
     """Tests for the decorators module."""
 
-    @mock.patch('side_effects.decorators.run_side_effects')
+    @mock.patch('side_effects.registry.run_side_effects')
     def test_has_side_effects(self, mock_run):
         """Decorated functions should call run_side_effects."""
         # call the decorator directly - then call the decorated function
@@ -148,7 +149,7 @@ class DecoratorTests(TestCase):
         func('bar', kwarg1='baz')
         mock_run.assert_not_called()
 
-    @mock.patch('side_effects.decorators.register_side_effect')
+    @mock.patch('side_effects.registry.register_side_effect')
     def test_is_side_effect_of(self, mock_register):
         """Decorated functions should be added to the registry."""
         # call the decorator directly - no need to call the decorated
@@ -157,3 +158,39 @@ class DecoratorTests(TestCase):
         mock_register.assert_called_with('foo', test_func_one_line)
         # check the function still works!
         self.assertEqual(func(1, 2), 3)
+
+    @decorators.disable_side_effects()
+    def test_disable_side_effects(self, events):
+        registry._registry.clear()
+        registry.register_side_effect('foo', test_func_no_docstring)
+
+        # simple func that calls the side-effect 'foo'
+        def foo():
+            registry.run_side_effects('foo')
+
+        foo()
+        self.assertEqual(events, ['foo'])
+        foo()
+        self.assertEqual(events, ['foo', 'foo'])
+
+
+class ContextManagerTests(TestCase):
+
+    @mock.patch('side_effects.registry._run_func')
+    def test_disable_side_effects(self, mock_func):
+        """Side-effects can be temporarily disabled."""
+        registry._registry.clear()
+        registry.register_side_effect('foo', test_func_no_docstring)
+
+        registry.run_side_effects('foo')
+        self.assertEqual(mock_func.call_count, 1)
+
+        # shouldn't get another call inside the CM
+        with registry.disable_side_effects() as events:
+            registry.run_side_effects('foo')
+            self.assertEqual(mock_func.call_count, 1)
+            self.assertEqual(events, ['foo'])
+
+        # re-enabled
+        registry.run_side_effects('foo')
+        self.assertEqual(mock_func.call_count, 2)

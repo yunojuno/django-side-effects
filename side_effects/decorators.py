@@ -2,10 +2,7 @@ from functools import wraps
 
 from django.http import HttpResponse
 
-from .registry import (
-    register_side_effect,
-    run_side_effects
-)
+from . import registry
 
 
 def http_response_check(response):
@@ -57,7 +54,7 @@ def has_side_effects(label, run_on_exit=http_response_check):
             """Run the original function and send the signal if successful."""
             result = func(*args, **kwargs)
             if run_on_exit(result):
-                run_side_effects(label, *args, **kwargs)
+                registry.run_side_effects(label, *args, **kwargs)
             return result
         return inner_func
     return decorator
@@ -66,10 +63,21 @@ def has_side_effects(label, run_on_exit=http_response_check):
 def is_side_effect_of(label):
     """Register a function as a side-effect."""
     def decorator(func):
-        register_side_effect(label, func)
+        registry.register_side_effect(label, func)
 
         @wraps(func)
         def inner_func(*args, **kwargs):
             return func(*args, **kwargs)
+        return inner_func
+    return decorator
+
+
+def disable_side_effects():
+    """Disable side-effects from firing - used for testing."""
+    def decorator(func):
+        @wraps(func)
+        def inner_func(*args, **kwargs):
+            with registry.disable_side_effects() as events:
+                return func(*args, events, **kwargs)
         return inner_func
     return decorator
