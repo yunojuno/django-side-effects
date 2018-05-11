@@ -7,14 +7,14 @@ chdir(path.normpath(path.join(path.abspath(__file__), pardir)))
 
 setup(
     name="django-side-effects",
-    version="1.1",
+    version="1.2",
     packages=find_packages(),
     include_package_data=True,
     description='Django app for managing external side effects.',
     long_description=README,
     url='https://github.com/yunojuno/django-side-effects',
     install_requires=[
-        'django>=1.10',
+        'django>=1.11',
         'python-env-utils'
     ],
     author='YunoJuno',
@@ -25,8 +25,8 @@ setup(
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',
-        'Framework :: Django :: 1.10',
         'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2.0',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
