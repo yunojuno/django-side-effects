@@ -161,6 +161,28 @@ management command ``display_side_effects``:
         - Send confirmation email to user.
         - Notify customer service.
 
+If you have a lot of side-effects wired up, you can filter the list by the label:
+
+.. code:: bash
+
+    $ ./manage.py display_side_effects --label update_profile
+
+    update_profile:
+
+        - Update CRM system.
+        - Notify account managers.
+
+Or by a partial match on the event label:
+
+.. code:: bash
+
+    $ ./manage.py display_side_effects --label-contains profile
+
+    update_profile:
+
+        - Update CRM system.
+        - Notify account managers.
+
 
 Why not use signals?
 --------------------
@@ -208,7 +230,7 @@ If you want to run the tests manually, make sure you install the requirements, a
 
 .. code::
 
-    $ pip install django==1.10  # your version goes here
+    $ pip install django==2.0  # your version goes here
     $ tox
 
 If you are hacking on the project, please keep coverage up.
