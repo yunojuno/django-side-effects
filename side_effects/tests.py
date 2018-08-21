@@ -127,6 +127,20 @@ class RegistryTests(TestCase):
         r.add('foo', test_func_no_docstring)
         self.assertTrue(r.contains('foo', test_func_no_docstring))
 
+    def test_by_label(self):
+        r = registry.Registry()
+        r.add('foo', test_func_no_docstring)
+        self.assertEqual(r.by_label('foo'), {'foo': [test_func_no_docstring]})
+        self.assertEqual(r.by_label('bar'), {})
+
+    def test_by_label_contains(self):
+        r = registry.Registry()
+        r.add('foo', test_func_no_docstring)
+        self.assertEqual(r.by_label_contains('f'), {'foo': [test_func_no_docstring]})
+        self.assertEqual(r.by_label_contains('fo'), {'foo': [test_func_no_docstring]})
+        self.assertEqual(r.by_label_contains('foo'), {'foo': [test_func_no_docstring]})
+        self.assertEqual(r.by_label_contains('food'), {})
+
 
 class DecoratorTests(TestCase):
 

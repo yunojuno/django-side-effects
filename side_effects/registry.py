@@ -53,6 +53,14 @@ class Registry(defaultdict):
         self._suppress = False
         super(Registry, self).__init__(list)
 
+    def by_label(self, value):
+        """Filter registry by label (exact match)."""
+        return {k:v for k, v in self.items() if k == value}
+
+    def by_label_contains(self, value):
+        """Filter registry by label (contains string)."""
+        return {k:v for k, v in self.items() if value in k}
+
     def contains(self, label, func):
         """
         Lookup label: function mapping in the registry.
