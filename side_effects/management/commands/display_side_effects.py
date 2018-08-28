@@ -58,33 +58,18 @@ class Command(BaseCommand):
 
         if options['raw']:
             self.print_raw(events)
-        elif options['docstrings']:
-            self.check_docstrings(events)
         elif options['verbose']:
             self.print_verbose(events)
         else:
             self.print_default(events)
 
+        if options['docstrings']:
+            sys.exit(self.check_docstrings(events))
+
     def print_raw(self, events: dict) -> None:
         """Print out the fully-qualified named for each mapped function."""
         raw = {label: [fname(f) for f in funcs] for label, funcs in events}
         self.stdout.write(json.dumps(raw, indent=4))
-
-    def check_docstrings(self, events: dict) -> None:
-        """
-        Check for docstrings on all functions, and exit non-0 if any are missing.
-
-        This method is useful for CI style checks - as it will exit with a failure
-        exit code (1). Can be used to ensure that all functions have docstrings.
-
-        """
-        exit_code = 0
-        for _, funcs in events:
-            for func in funcs:
-                if docstring(func) is None:
-                    self.stdout.write(f'{fname(func)} is missing docstring')
-                    exit_code = 1
-        sys.exit(exit_code)
 
     def print_verbose(self, events: dict) -> None:
         """Print the entire docstring for each mapped function."""
@@ -94,10 +79,13 @@ class Command(BaseCommand):
             self.stdout.write('')
             for func in funcs:
                 docs = docstring(func)
-                self.stdout.write('  - %s' % docs[0])
-                for line in docs[1:]:
-                    self.stdout.write('    %s' % line)
-                self.stdout.write('')
+                if docs is None:
+                    self.stdout.write('*** DOCSTRING MISSING: %s ***' % func.__name__)
+                else:
+                    self.stdout.write('  - %s' % docs[0])
+                    for line in docs[1:]:
+                        self.stdout.write('    %s' % line)
+                    self.stdout.write('')
 
     def print_default(self, events: dict) -> None:
         """Print the first line of the docstring for each mapped function."""
@@ -110,3 +98,22 @@ class Command(BaseCommand):
                     self.stdout.write('*** DOCSTRING MISSING: %s ***' % func.__name__)
                 else:
                     self.stdout.write('  - %s' % docs[0])
+
+    def check_docstrings(self, events: dict) -> int:
+        """
+        Check for docstrings on all functions, and return number of missing docstrings.
+
+        This method is useful for CI style checks - as we can use any number > 0 as
+        a failure return code.
+
+        """
+        self.stdout.write('Checking registered functions for valid dosctrings.')
+        exit_code = 0
+        for label, funcs in events:
+            for func in funcs:
+                if docstring(func) is None:
+                    self.stdout.write(f'X {label}: {fname(func)}')
+                    exit_code += 1
+                else:
+                    self.stdout.write(f'- {label}: {fname(func)}')
+        return exit_code

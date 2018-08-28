@@ -168,7 +168,6 @@ If you have a lot of side-effects wired up, you can filter the list by the label
     $ ./manage.py display_side_effects --label update_profile
 
     update_profile:
-
         - Update CRM system.
         - Notify account managers.
 
@@ -179,10 +178,24 @@ Or by a partial match on the event label:
     $ ./manage.py display_side_effects --label-contains profile
 
     update_profile:
-
         - Update CRM system.
         - Notify account managers.
 
+If you want to enforce docstrings on side-effect functions, then you can use the
+`--check-docstrings` option, which will exit with a non-zero exit code if any
+docstrings are missing. This can be used as part of a CI process, failing any
+build that does not have all its functions documented. (The exit code is the count
+of functions without docstrings).
+
+.. code:: bash
+
+    $ ./manage.py display_side_effects --check-docstrings
+
+    update_profile:
+        *** DOCSTRING MISSING: update_crm ***
+        - Notify account managers.
+
+    ERROR: InvocationError for command '...' (exited with code 1)
 
 Why not use signals?
 --------------------
