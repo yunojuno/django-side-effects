@@ -1,4 +1,5 @@
 import json
+from os import sys
 
 from django.core.management.base import BaseCommand
 
@@ -21,16 +22,23 @@ class Command(BaseCommand):
             help="Display full docstring for all side-effect functions."
         )
         parser.add_argument(
+            '--check-docstrings',
+            action='store_true',
+            default=False,
+            dest='docstrings',
+            help="Check for valid docstrings on all registered functions (& fail if any missing)."
+        )
+        parser.add_argument(
             '--label',
             action='store',
             dest='label',
-            help="Filter side-effects on a single event label"
+            help="Filter side-effects on a single event label."
         )
         parser.add_argument(
             '--label-contains',
             action='store',
             dest='label-contains',
-            help="Filter side-effects on event labels containing the supplied value"
+            help="Filter side-effects on event labels containing the supplied value."
         )
 
     def handle(self, *args, **options):
@@ -50,19 +58,37 @@ class Command(BaseCommand):
 
         if options['raw']:
             self.print_raw(events)
+        elif options['docstrings']:
+            self.check_docstrings(events)
         elif options['verbose']:
             self.print_verbose(events)
         else:
             self.print_default(events)
 
-    def print_raw(self, events):
+    def print_raw(self, events: dict) -> None:
         """Print out the fully-qualified named for each mapped function."""
-        raw = {label: [fname(f) for f in funcs] for label, funcs in events.items()}
+        raw = {label: [fname(f) for f in funcs] for label, funcs in events}
         self.stdout.write(json.dumps(raw, indent=4))
 
-    def print_verbose(self, events):
+    def check_docstrings(self, events: dict) -> None:
+        """
+        Check for docstrings on all functions, and exit non-0 if any are missing.
+
+        This method is useful for CI style checks - as it will exit with a failure
+        exit code (1). Can be used to ensure that all functions have docstrings.
+
+        """
+        exit_code = 0
+        for _, funcs in events:
+            for func in funcs:
+                if docstring(func) is None:
+                    self.stdout.write(f'{fname(func)} is missing docstring')
+                    exit_code = 1
+        sys.exit(exit_code)
+
+    def print_verbose(self, events: dict) -> None:
         """Print the entire docstring for each mapped function."""
-        for label, funcs in events.items():
+        for label, funcs in events:
             self.stdout.write('')
             self.stdout.write(label)
             self.stdout.write('')
@@ -73,9 +99,9 @@ class Command(BaseCommand):
                     self.stdout.write('    %s' % line)
                 self.stdout.write('')
 
-    def print_default(self, events):
+    def print_default(self, events: dict) -> None:
         """Print the first line of the docstring for each mapped function."""
-        for label, funcs in events.items():
+        for label, funcs in events:
             self.stdout.write('')
             self.stdout.write(label)
             for func in funcs:
