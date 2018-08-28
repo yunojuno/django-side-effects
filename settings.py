@@ -6,6 +6,9 @@ DATABASES = {
     }
 }
 
-INSTALLED_APPS = ('side_effects',)
+INSTALLED_APPS = (
+    'side_effects',
+    'test_app'
+)
 
 SECRET_KEY = "side-effects"

@@ -10,6 +10,10 @@ class Command(BaseCommand):
 
     help = "Displays project side_effects."
 
+    def __init__(self, *args, **kwargs):
+        self.missing_docstrings = []
+        super().__init__(*args, **kwargs)
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--raw',
@@ -22,11 +26,11 @@ class Command(BaseCommand):
             help="Display full docstring for all side-effect functions."
         )
         parser.add_argument(
-            '--check-docstrings',
+            '--strict',
             action='store_true',
             default=False,
-            dest='docstrings',
-            help="Check for valid docstrings on all registered functions (& fail if any missing)."
+            dest='strict',
+            help="Exit with a non-zero exit code if any registered functions have no docstrings."
         )
         parser.add_argument(
             '--label',
@@ -63,8 +67,10 @@ class Command(BaseCommand):
         else:
             self.print_default(events)
 
-        if options['docstrings']:
-            sys.exit(self.check_docstrings(events))
+        self.print_missing()
+
+        if options['strict']:
+            self.exit()
 
     def print_raw(self, events: dict) -> None:
         """Print out the fully-qualified named for each mapped function."""
@@ -80,11 +86,14 @@ class Command(BaseCommand):
             for func in funcs:
                 docs = docstring(func)
                 if docs is None:
-                    self.stdout.write('*** DOCSTRING MISSING: %s ***' % func.__name__)
+                    self.missing_docstrings.append(fname(func))
+                    self.stderr.write(f'  x {fname(func)} (no docstring)')
+                    self.stdout.write('')
                 else:
-                    self.stdout.write('  - %s' % docs[0])
+                    self.stdout.write(f'  - {fname(func)}:')
+                    self.stdout.write(f'    {docs[0]}')
                     for line in docs[1:]:
-                        self.stdout.write('    %s' % line)
+                        self.stdout.write(f'    {line}')
                     self.stdout.write('')
 
     def print_default(self, events: dict) -> None:
@@ -95,25 +104,25 @@ class Command(BaseCommand):
             for func in funcs:
                 docs = docstring(func)
                 if docs is None:
-                    self.stdout.write('*** DOCSTRING MISSING: %s ***' % func.__name__)
+                    self.missing_docstrings.append(fname(func))
+                    self.stderr.write(f'  x {fname(func)} (no docstring)')
                 else:
-                    self.stdout.write('  - %s' % docs[0])
+                    self.stdout.write(f'  - {docs[0]}')
 
-    def check_docstrings(self, events: dict) -> int:
+    def print_missing(self):
+        """Print out the contents of self.missing_docstrings."""
+        if self.missing_docstrings:
+            self.stderr.write('\nThe following functions have no docstrings:')
+            for md in self.missing_docstrings:
+                self.stderr.write(f'  {md}')
+        else:
+            self.stdout.write('\nAll registered functions have docstrings')
+
+    def exit(self):
+        """Exit based on whether there are any missing docstrings.
+
+        This is used in CI scenarios to fail a build in which there are missing
+        docstrings.
+
         """
-        Check for docstrings on all functions, and return number of missing docstrings.
-
-        This method is useful for CI style checks - as we can use any number > 0 as
-        a failure return code.
-
-        """
-        self.stdout.write('Checking registered functions for valid dosctrings.')
-        exit_code = 0
-        for label, funcs in events:
-            for func in funcs:
-                if docstring(func) is None:
-                    self.stdout.write(f'X {label}: {fname(func)}')
-                    exit_code += 1
-                else:
-                    self.stdout.write(f'- {label}: {fname(func)}')
-        return exit_code
+        sys.exit(len(self.missing_docstrings))
