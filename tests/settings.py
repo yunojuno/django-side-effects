@@ -8,7 +8,7 @@ DATABASES = {
 
 INSTALLED_APPS = (
     'side_effects',
-    'test_app'
+    'tests',
 )
 
 SECRET_KEY = "side-effects"

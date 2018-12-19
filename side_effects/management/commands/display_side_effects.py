@@ -47,18 +47,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['label']:
-            events = _registry.by_label(options['label'])
             self.stdout.write(
                 f"\nSide-effects for event matching \'{options['label']}\':"
             )
+            events = _registry.by_label(options['label']).items()
         elif options['label-contains']:
             self.stdout.write(
                 f"\nSide-effects for events matching \'*{options['label-contains']}*\':"
             )
-            events = _registry.by_label_contains(options['label-contains'])
+            events = _registry.by_label_contains(options['label-contains']).items()
         else:
-            events = _registry.items()
             self.stdout.write("\nRegistered side-effects:")
+            events = _registry.items()
 
         if options['raw']:
             self.print_raw(events)
