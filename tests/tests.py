@@ -2,7 +2,7 @@ from unittest import mock
 
 from django.test import TestCase
 
-from . import registry, decorators, settings
+from side_effects import registry, decorators, settings
 
 
 def test_func_no_docstring(arg1, kwarg1=None):
@@ -102,7 +102,7 @@ class RegistryFunctionTests(TestCase):
 
     def test__run_func(self):
         """Test the _run_func function handles exceptions gracefully."""
-        with mock.patch('side_effects.tests.test_func_no_docstring') as mock_func:
+        with mock.patch('tests.tests.test_func_no_docstring') as mock_func:
             registry._run_func(test_func_no_docstring)
             self.assertEqual(mock_func.call_count, 1)
         # if the func raises an exception we should log it but not fail
@@ -130,17 +130,18 @@ class RegistryTests(TestCase):
     def test_by_label(self):
         r = registry.Registry()
         r.add('foo', test_func_no_docstring)
+        self.assertEqual(r.by_label('foo').items(), r.items())
         self.assertEqual(r.by_label('foo'), {'foo': [test_func_no_docstring]})
         self.assertEqual(r.by_label('bar'), {})
 
     def test_by_label_contains(self):
         r = registry.Registry()
         r.add('foo', test_func_no_docstring)
+        self.assertEqual(r.by_label_contains('foo').items(), r.items())
         self.assertEqual(r.by_label_contains('f'), {'foo': [test_func_no_docstring]})
         self.assertEqual(r.by_label_contains('fo'), {'foo': [test_func_no_docstring]})
         self.assertEqual(r.by_label_contains('foo'), {'foo': [test_func_no_docstring]})
         self.assertEqual(r.by_label_contains('food'), {})
-
 
 class DecoratorTests(TestCase):
 
