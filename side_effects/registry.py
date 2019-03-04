@@ -15,16 +15,21 @@ logger = logging.getLogger(__name__)
 
 def fname(func):
     """Return fully-qualified function name."""
-    return '%s.%s' % (func.__module__, func.__name__)
+    return "%s.%s" % (func.__module__, func.__name__)
 
 
 def docstring(func):
     """Split and strip function docstrings into a list of lines."""
     try:
-        lines = func.__doc__.strip().split('\n')
+        lines = func.__doc__.strip().split("\n")
         return [line.strip() for line in lines]
     except AttributeError:
         return None
+
+
+class SideEffectsTestFailure(Exception):
+    def __init__(self, label):
+        super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
 
 
 class Registry(defaultdict):
@@ -55,11 +60,11 @@ class Registry(defaultdict):
 
     def by_label(self, value):
         """Filter registry by label (exact match)."""
-        return {k:v for k, v in self.items() if k == value}
+        return {k: v for k, v in self.items() if k == value}
 
     def by_label_contains(self, value):
         """Filter registry by label (contains string)."""
-        return {k:v for k, v in self.items() if value in k}
+        return {k: v for k, v in self.items() if value in k}
 
     def contains(self, label, func):
         """
@@ -88,6 +93,8 @@ class Registry(defaultdict):
             self[label].append(func)
 
     def _run_side_effects(self, label, *args, **kwargs):
+        if settings.TEST_MODE_FAIL:
+            raise SideEffectsTestFailure(label)
         for func in self[label]:
             _run_func(func, *args, **kwargs)
 
@@ -110,7 +117,7 @@ class Registry(defaultdict):
             self._run_side_effects(label, *args, **kwargs)
 
 
-class disable_side_effects():
+class disable_side_effects:
 
     """Context manager used to disable side-effects temporarily.
 
@@ -127,7 +134,7 @@ class disable_side_effects():
         pass
 
     def __enter__(self):
-        _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid='suppress')
+        _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
         _registry._suppress = True
         return self.events
 
@@ -136,7 +143,7 @@ class disable_side_effects():
         _registry.suppressed_side_effect.disconnect(self.on_event)
 
     def on_event(self, sender, **kwargs):
-        self.events.append(kwargs['label'])
+        self.events.append(kwargs["label"])
 
 
 def register_side_effect(label, func):
@@ -156,7 +163,7 @@ def _run_func(func, *args, **kwargs):
     try:
         func(*args, **kwargs)
     except Exception:
-        if settings.ABORT_ON_ERROR:
+        if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
             raise
         else:
             logger.exception("Error running side_effect function '%s'", fname(func))
