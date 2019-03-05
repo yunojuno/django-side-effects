@@ -48,6 +48,7 @@ def has_side_effects(label, run_on_exit=http_response_check):
             codes.
 
     """
+
     def decorator(func):
         @wraps(func)
         def inner_func(*args, **kwargs):
@@ -56,28 +57,36 @@ def has_side_effects(label, run_on_exit=http_response_check):
             if run_on_exit(result):
                 registry.run_side_effects(label, *args, **kwargs)
             return result
+
         return inner_func
+
     return decorator
 
 
 def is_side_effect_of(label):
     """Register a function as a side-effect."""
+
     def decorator(func):
         registry.register_side_effect(label, func)
 
         @wraps(func)
         def inner_func(*args, **kwargs):
             return func(*args, **kwargs)
+
         return inner_func
+
     return decorator
 
 
 def disable_side_effects():
     """Disable side-effects from firing - used for testing."""
+
     def decorator(func):
         @wraps(func)
         def inner_func(*args, **kwargs):
             with registry.disable_side_effects() as events:
                 return func(*args, events, **kwargs)
+
         return inner_func
+
     return decorator

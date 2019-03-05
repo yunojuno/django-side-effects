@@ -16,60 +16,60 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--raw',
-            action='store_true',
-            help="Display raw mapping of labels to functions."
+            "--raw",
+            action="store_true",
+            help="Display raw mapping of labels to functions.",
         )
         parser.add_argument(
-            '--verbose',
-            action='store_true',
-            help="Display full docstring for all side-effect functions."
+            "--verbose",
+            action="store_true",
+            help="Display full docstring for all side-effect functions.",
         )
         parser.add_argument(
-            '--strict',
-            action='store_true',
+            "--strict",
+            action="store_true",
             default=False,
-            dest='strict',
-            help="Exit with a non-zero exit code if any registered functions have no docstrings."
+            dest="strict",
+            help="Exit with a non-zero exit code if any registered functions have no docstrings.",
         )
         parser.add_argument(
-            '--label',
-            action='store',
-            dest='label',
-            help="Filter side-effects on a single event label."
+            "--label",
+            action="store",
+            dest="label",
+            help="Filter side-effects on a single event label.",
         )
         parser.add_argument(
-            '--label-contains',
-            action='store',
-            dest='label-contains',
-            help="Filter side-effects on event labels containing the supplied value."
+            "--label-contains",
+            action="store",
+            dest="label-contains",
+            help="Filter side-effects on event labels containing the supplied value.",
         )
 
     def handle(self, *args, **options):
-        if options['label']:
+        if options["label"]:
             self.stdout.write(
-                f"\nSide-effects for event matching \'{options['label']}\':"
+                f"\nSide-effects for event matching '{options['label']}':"
             )
-            events = _registry.by_label(options['label']).items()
-        elif options['label-contains']:
+            events = _registry.by_label(options["label"]).items()
+        elif options["label-contains"]:
             self.stdout.write(
-                f"\nSide-effects for events matching \'*{options['label-contains']}*\':"
+                f"\nSide-effects for events matching '*{options['label-contains']}*':"
             )
-            events = _registry.by_label_contains(options['label-contains']).items()
+            events = _registry.by_label_contains(options["label-contains"]).items()
         else:
             self.stdout.write("\nRegistered side-effects:")
             events = _registry.items()
 
-        if options['raw']:
+        if options["raw"]:
             self.print_raw(events)
-        elif options['verbose']:
+        elif options["verbose"]:
             self.print_verbose(events)
         else:
             self.print_default(events)
 
         self.print_missing()
 
-        if options['strict']:
+        if options["strict"]:
             self.exit()
 
     def print_raw(self, events: dict) -> None:
@@ -80,43 +80,43 @@ class Command(BaseCommand):
     def print_verbose(self, events: dict) -> None:
         """Print the entire docstring for each mapped function."""
         for label, funcs in events:
-            self.stdout.write('')
+            self.stdout.write("")
             self.stdout.write(label)
-            self.stdout.write('')
+            self.stdout.write("")
             for func in funcs:
                 docs = docstring(func)
                 if docs is None:
                     self.missing_docstrings.append(fname(func))
-                    self.stderr.write(f'  x {fname(func)} (no docstring)')
-                    self.stdout.write('')
+                    self.stderr.write(f"  x {fname(func)} (no docstring)")
+                    self.stdout.write("")
                 else:
-                    self.stdout.write(f'  - {fname(func)}:')
-                    self.stdout.write(f'    {docs[0]}')
+                    self.stdout.write(f"  - {fname(func)}:")
+                    self.stdout.write(f"    {docs[0]}")
                     for line in docs[1:]:
-                        self.stdout.write(f'    {line}')
-                    self.stdout.write('')
+                        self.stdout.write(f"    {line}")
+                    self.stdout.write("")
 
     def print_default(self, events: dict) -> None:
         """Print the first line of the docstring for each mapped function."""
         for label, funcs in events:
-            self.stdout.write('')
+            self.stdout.write("")
             self.stdout.write(label)
             for func in funcs:
                 docs = docstring(func)
                 if docs is None:
                     self.missing_docstrings.append(fname(func))
-                    self.stderr.write(f'  x {fname(func)} (no docstring)')
+                    self.stderr.write(f"  x {fname(func)} (no docstring)")
                 else:
-                    self.stdout.write(f'  - {docs[0]}')
+                    self.stdout.write(f"  - {docs[0]}")
 
     def print_missing(self):
         """Print out the contents of self.missing_docstrings."""
         if self.missing_docstrings:
-            self.stderr.write('\nThe following functions have no docstrings:')
+            self.stderr.write("\nThe following functions have no docstrings:")
             for md in self.missing_docstrings:
-                self.stderr.write(f'  {md}')
+                self.stderr.write(f"  {md}")
         else:
-            self.stdout.write('\nAll registered functions have docstrings')
+            self.stdout.write("\nAll registered functions have docstrings")
 
     def exit(self):
         """Exit based on whether there are any missing docstrings.

@@ -1,1 +1,1 @@
-default_app_config = 'side_effects.apps.SideEffectsConfig'
+default_app_config = "side_effects.apps.SideEffectsConfig"

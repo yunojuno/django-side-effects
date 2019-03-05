@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class SideEffectsConfig(AppConfig):
 
-    name = 'side_effects'
+    name = "side_effects"
     verbose_name = "External Side Effects"
     configs = []
 

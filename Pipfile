@@ -5,9 +5,13 @@ verify_ssl = true
 
 [dev-packages]
 tox = "*"
+black = "*"
 
 [packages]
-coverage = {path = ".",editable = true}
+side_effects = {path = ".",editable = true}
 
 [requires]
-python_version = "3.6"
+python_version = "3"
+
+[pipenv]
+allow_prereleases = true
