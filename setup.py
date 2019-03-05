@@ -1,13 +1,15 @@
 from os import path, pardir, chdir
 from setuptools import setup, find_packages
 
+from side_effects import __version__
+
 README = open(path.join(path.dirname(__file__), "README.rst")).read()
 # allow setup.py to be run from any path
 chdir(path.normpath(path.join(path.abspath(__file__), pardir)))
 
 setup(
     name="django-side-effects",
-    version="1.2.5-dev1",
+    version=__version__,
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
     description="Django app for managing external side effects.",
