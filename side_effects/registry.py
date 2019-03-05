@@ -101,17 +101,13 @@ class Registry(defaultdict):
     def run_side_effects(self, label, *args, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
 
-        If TEST_MODE is True, then no side-effects are run.
-
-        If the _suppress attr is True, then the side-effects are not run, but the
-        suppressed_side_effect signal is sent - this is primarily used by the
-        disable_side_effects context manager to register which side-effects events
-        were suppressed (for testing purposes).
+        If TEST_MODE is on, or the _suppress attr is True, then the side-effects
+        are not run, but the `suppressed_side_effect` signal is sent - this is
+        primarily used by the disable_side_effects context manager to register
+        which side-effects events were suppressed (for testing purposes).
 
         """
-        if settings.TEST_MODE:
-            logger.debug("Ignoring all side-effects (TEST_MODE)")
-        elif self._suppress:
+        if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
             self._run_side_effects(label, *args, **kwargs)

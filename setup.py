@@ -7,7 +7,7 @@ chdir(path.normpath(path.join(path.abspath(__file__), pardir)))
 
 setup(
     name="django-side-effects",
-    version="1.2.5-dev0",
+    version="1.2.5-dev1",
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
     description="Django app for managing external side effects.",
