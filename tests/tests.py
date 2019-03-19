@@ -152,7 +152,7 @@ class RegistryTests(TestCase):
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func_no_docstring]})
         self.assertEqual(r.by_label_contains("food"), {})
 
-    @mock.patch('side_effects.registry._run_func')
+    @mock.patch("side_effects.registry._run_func")
     def test__run_side_effects__no_return_value(self, mock_run):
         """Test return_value is not passed"""
         r = registry.Registry()
@@ -160,21 +160,19 @@ class RegistryTests(TestCase):
         r._run_side_effects("foo", return_value="bar")
         mock_run.assert_called_with(test_func_no_docstring)
 
-    @mock.patch('side_effects.registry._run_func')
+    @mock.patch("side_effects.registry._run_func")
     def test__run_side_effects__with_return_value(self, mock_run):
         """Test return_value is passed"""
         r = registry.Registry()
         r.add("foo", test_func_pass_return_value)
         r._run_side_effects("foo", return_value="bar")
-        mock_run.assert_called_with(
-            test_func_pass_return_value,
-            return_value="bar"
-        )
+        mock_run.assert_called_with(test_func_pass_return_value, return_value="bar")
 
 
 class DecoratorTests(TestCase):
 
     """Tests for the decorators module."""
+
     def setUp(self):
         registry._registry.clear()
 
@@ -185,7 +183,9 @@ class DecoratorTests(TestCase):
         # as the action takes places post-function call.
         func = decorators.has_side_effects("foo")(test_func_no_docstring)
         return_value = func("bar", kwarg1="baz")
-        mock_run.assert_called_with("foo", "bar", kwarg1="baz", return_value=return_value)
+        mock_run.assert_called_with(
+            "foo", "bar", kwarg1="baz", return_value=return_value
+        )
 
     @mock.patch("side_effects.registry.run_side_effects")
     def test_has_side_effects__run_on_exit_false(self, mock_run):

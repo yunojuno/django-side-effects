@@ -93,17 +93,18 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
-    def _run_side_effects(self, label, *args, return_value=None, **kwargs):
+    def _run_side_effects(self, label, *args, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
+        # Remove "return_value" for functions that don't require it
+        kwargs_lite = {k: v for k, v in kwargs.items() if k != "return_value"}
         for func in self[label]:
-            # inspecting kwargs on each invocation isn't great, but if it starts
-            # adversely affecting performance side-effects may not be appropriate
             if "return_value" in inspect.getfullargspec(func).args:
-                kwargs["return_value"] = return_value
-            _run_func(func, *args, **kwargs)
+                _run_func(func, *args, **kwargs)
+            else:
+                _run_func(func, *args, **kwargs_lite)
 
-    def run_side_effects(self, label, *args, return_value=None, **kwargs):
+    def run_side_effects(self, label, *args, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
 
         If TEST_MODE is on, or the _suppress attr is True, then the side-effects
@@ -115,7 +116,7 @@ class Registry(defaultdict):
         if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
-            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
+            self._run_side_effects(label, *args, **kwargs)
 
 
 class disable_side_effects:
@@ -154,9 +155,9 @@ def register_side_effect(label, func):
     _registry.add(label, func)
 
 
-def run_side_effects(label, *args, return_value=None, **kwargs):
+def run_side_effects(label, *args, **kwargs):
     """Run all of the side-effect functions registered for a label."""
-    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
+    _registry.run_side_effects(label, *args, **kwargs)
 
 
 def _run_func(func, *args, **kwargs):
