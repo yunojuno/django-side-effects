@@ -5,8 +5,13 @@ from django.test import TestCase
 from side_effects import registry, decorators, settings
 
 
-def test_func_no_docstring(arg1, kwarg1=None):
-    pass
+def test_func_no_docstring(arg1, kwarg1="foo"):
+    return arg1
+
+
+def test_func_pass_return_value(arg1, return_value=None):
+    """Takes the magic args 'return_value'."""
+    return return_value
 
 
 def test_func_one_line(*args):
@@ -147,10 +152,31 @@ class RegistryTests(TestCase):
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func_no_docstring]})
         self.assertEqual(r.by_label_contains("food"), {})
 
+    @mock.patch('side_effects.registry._run_func')
+    def test__run_side_effects__no_return_value(self, mock_run):
+        """Test return_value is not passed"""
+        r = registry.Registry()
+        r.add("foo", test_func_no_docstring)
+        r._run_side_effects("foo", return_value="bar")
+        mock_run.assert_called_with(test_func_no_docstring)
+
+    @mock.patch('side_effects.registry._run_func')
+    def test__run_side_effects__with_return_value(self, mock_run):
+        """Test return_value is passed"""
+        r = registry.Registry()
+        r.add("foo", test_func_pass_return_value)
+        r._run_side_effects("foo", return_value="bar")
+        mock_run.assert_called_with(
+            test_func_pass_return_value,
+            return_value="bar"
+        )
+
 
 class DecoratorTests(TestCase):
 
     """Tests for the decorators module."""
+    def setUp(self):
+        registry._registry.clear()
 
     @mock.patch("side_effects.registry.run_side_effects")
     def test_has_side_effects(self, mock_run):
@@ -158,10 +184,12 @@ class DecoratorTests(TestCase):
         # call the decorator directly - then call the decorated function
         # as the action takes places post-function call.
         func = decorators.has_side_effects("foo")(test_func_no_docstring)
-        func("bar", kwarg1="baz")
-        mock_run.assert_called_with("foo", "bar", kwarg1="baz")
-        mock_run.reset_mock()
-        # forcible ignore the side effects via the run_on_exit kwarg
+        return_value = func("bar", kwarg1="baz")
+        mock_run.assert_called_with("foo", "bar", kwarg1="baz", return_value=return_value)
+
+    @mock.patch("side_effects.registry.run_side_effects")
+    def test_has_side_effects__run_on_exit_false(self, mock_run):
+        """Decorated functions should call run_side_effects."""
         func = decorators.has_side_effects("foo", run_on_exit=lambda r: False)(
             test_func_no_docstring
         )
@@ -180,9 +208,7 @@ class DecoratorTests(TestCase):
 
     @decorators.disable_side_effects()
     def test_disable_side_effects(self, events):
-        registry._registry.clear()
         registry.register_side_effect("foo", test_func_no_docstring)
-
         # simple func that calls the side-effect 'foo'
         def foo():
             registry.run_side_effects("foo")

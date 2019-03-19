@@ -2,9 +2,10 @@
 This module contains the Registry class that is responsible for managing
 all of the registered side-effects.
 """
-from collections import defaultdict
+import inspect
 import logging
 import threading
+from collections import defaultdict
 
 from django.dispatch import Signal
 
@@ -92,13 +93,17 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
-    def _run_side_effects(self, label, *args, **kwargs):
+    def _run_side_effects(self, label, *args, return_value=None, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
         for func in self[label]:
+            # inspecting kwargs on each invocation isn't great, but if it starts
+            # adversely affecting performance side-effects may not be appropriate
+            if "return_value" in inspect.getfullargspec(func).args:
+                kwargs["return_value"] = return_value
             _run_func(func, *args, **kwargs)
 
-    def run_side_effects(self, label, *args, **kwargs):
+    def run_side_effects(self, label, *args, return_value=None, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
 
         If TEST_MODE is on, or the _suppress attr is True, then the side-effects
@@ -110,7 +115,7 @@ class Registry(defaultdict):
         if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
-            self._run_side_effects(label, *args, **kwargs)
+            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
 class disable_side_effects:
@@ -149,9 +154,9 @@ def register_side_effect(label, func):
     _registry.add(label, func)
 
 
-def run_side_effects(label, *args, **kwargs):
+def run_side_effects(label, *args, return_value=None, **kwargs):
     """Run all of the side-effect functions registered for a label."""
-    _registry.run_side_effects(label, *args, **kwargs)
+    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
 def _run_func(func, *args, **kwargs):
