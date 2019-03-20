@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 tox = "*"
 black = "*"
+pylint = "*"
+pep8 = "*"
 
 [packages]
 side_effects = {path = ".",editable = true}

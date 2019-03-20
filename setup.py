@@ -15,7 +15,7 @@ setup(
     description="Django app for managing external side effects.",
     long_description=README,
     url="https://github.com/yunojuno/django-side-effects",
-    install_requires=["django>=1.11", "python-env-utils"],
+    install_requires=["django>=1.11,<3.0", "python-env-utils"],
     author="YunoJuno",
     author_email="code@yunojuno.com",
     license="MIT",
