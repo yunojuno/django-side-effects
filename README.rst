@@ -28,9 +28,9 @@ illustrated by example:
 
 **Notifications**
 
-* HipChat messages
+* Slack messages
 * SMS (via Twilio)
-* Push notifications (via Google Cloud Messaging)
+* Push notifications
 * Email
 
 **Updates**
@@ -139,6 +139,46 @@ only responsible for its own functionality. In this example we have two
 side-effects bound to the same origin, however this is an implementation
 detail - you could have a single function implementing all the side-effects,
 or split them out further into the individual external systems.
+
+**Passing origin function return value to side-effects handlers**
+
+By default, side-effects handling functions must have the same function
+signature as the origin function. (Internally the `(*args, **kwargs)` are
+just a straight pass-through to the handler.) However, in certain cases it
+is very useful to have access to the origin function return value. A common
+case is where the origin function creates a new object. The framework handles
+this internally by introspecting the handler function, and looking for **kwargs.
+
+This is best illustrated with an example:
+
+.. code:: python
+
+    @has_side_effects("foo")
+    def origin_func(arg1: int, arg2: int) -> int:
+        return arg1 + arg2
+
+    @is_side_effect_of("foo")
+    def handle_func1(arg1, arg2):
+        # this func will not receive the return_value, as
+        # no kwargs are specified
+
+    @is_side_effect_of("foo")
+    def handle_func1(arg1, arg2, **kwargs):
+        # this func will receive the return_value via **kwargs
+        assert "return_value" in kwargs
+
+    @is_side_effect_of("foo")
+    def handle_func1(arg1, arg2, return_value=None):
+        # this func will receive the return_value
+
+    @is_side_effect_of("foo")
+    def handle_func1(arg1, arg2, return_value):
+        # this func will receive the return_value, as it is a named arg,
+        # and there is no *args variable
+
+    @is_side_effect_of("foo")
+    def handle_func1(*args, return_value):
+        # this func will *NOT* receive the return_value
 
 Internally, the app maintains a registry of side-effects functions bound to
 origin functions using the text labels. The docstrings for all the bound functions can be grouped using these labels, and then be printed out using the

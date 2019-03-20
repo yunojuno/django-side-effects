@@ -179,7 +179,12 @@ def pass_return_value(func):
     from the kwargs before calling the function.
 
     """
-    return inspect.getfullargspec(func).varkw == "kwargs"
+    spec = inspect.getfullargspec(func)
+    return (
+        "return_value" in spec.args
+        or "return_value" in spec.kwonlyargs
+        or spec.varkw == "kwargs"
+    )
 
 
 # global registry

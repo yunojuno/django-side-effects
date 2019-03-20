@@ -64,9 +64,21 @@ class RegistryFunctionTests(TestCase):
         def baz(*args, **kwargs):
             pass
 
+        def dave(*args, return_value):
+            pass
+
+        def dee(arg1, return_value):
+            pass
+
+        def dozy(arg1, return_value=None):
+            pass
+
         self.assertFalse(registry.pass_return_value(foo))
         self.assertFalse(registry.pass_return_value(bar))
         self.assertTrue(registry.pass_return_value(baz))
+        self.assertTrue(registry.pass_return_value(dave))
+        self.assertTrue(registry.pass_return_value(dee))
+        self.assertTrue(registry.pass_return_value(dozy))
 
     def test_register_side_effect(self):
         def test_func1():
@@ -223,6 +235,19 @@ class DecoratorTests(TestCase):
 
     def setUp(self):
         registry._registry.clear()
+
+    def test_http_response_check(self):
+        """Test the HTTP response check rejects 4xx, 5xx status_codes."""
+        response = decorators.HttpResponse(status=200)
+        self.assertTrue(decorators.http_response_check(response))
+        response.status_code = 300
+        self.assertTrue(decorators.http_response_check(response))
+        response.status_code = 400
+        self.assertFalse(decorators.http_response_check(response))
+        response.status_code = 500
+        self.assertFalse(decorators.http_response_check(response))
+        response.status_code = 600
+        self.assertTrue(decorators.http_response_check(response))
 
     @mock.patch("side_effects.decorators.registry")
     def test_has_side_effects(self, mock_registry):
