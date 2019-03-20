@@ -90,7 +90,6 @@
                 "sha256:09a9dcb7c46ed496a9850b76e4e825d6049ecd38b611f1224857a79bd985a8cf",
                 "sha256:68950ffd4d9169716bcb8719a56c07a2f4485354fec061cdd5910aa07369731c"
             ],
-            "index": "pypi",
             "version": "==19.3b0"
         },
         "click": {
@@ -160,7 +159,6 @@
                 "sha256:b22cfae5db09833bb9bd7c8463b53e1a9c9b39f12e304a8d0bba729c501827ee",
                 "sha256:fe249b52e20498e59e0b5c5256aa52ee99fc295b26ec9eaa85776ffdb9fe6374"
             ],
-            "index": "pypi",
             "version": "==1.7.1"
         },
         "pluggy": {
@@ -182,7 +180,6 @@
                 "sha256:5d77031694a5fb97ea95e828c8d10fc770a1df6eb3906067aaed42201a8a6a09",
                 "sha256:723e3db49555abaf9bf79dc474c6b9e2935ad82230b10c1138a71ea41ac0fff1"
             ],
-            "index": "pypi",
             "version": "==2.3.1"
         },
         "six": {
@@ -204,7 +201,6 @@
                 "sha256:04f8f1aa05de8e76d7a266ccd14e0d665d429977cd42123bc38efa9b59964e9e",
                 "sha256:25ef928babe88c71e3ed3af0c464d1160b01fca2dd1870a5bb26c2dea61a17fc"
             ],
-            "index": "pypi",
             "version": "==3.7.0"
         },
         "typed-ast": {

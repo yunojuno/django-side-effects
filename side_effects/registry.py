@@ -96,13 +96,8 @@ class Registry(defaultdict):
     def _run_side_effects(self, label, *args, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
-        # Remove "return_value" for functions that don't require it
-        kwargs_lite = {k: v for k, v in kwargs.items() if k != "return_value"}
         for func in self[label]:
-            if "return_value" in inspect.getfullargspec(func).args:
-                _run_func(func, *args, **kwargs)
-            else:
-                _run_func(func, *args, **kwargs_lite)
+            _run_func(func, *args, **kwargs)
 
     def run_side_effects(self, label, *args, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
@@ -163,12 +158,28 @@ def run_side_effects(label, *args, **kwargs):
 def _run_func(func, *args, **kwargs):
     """Run a single side-effect function and handle errors."""
     try:
-        func(*args, **kwargs)
+        if pass_return_value(func):
+            func(*args, **kwargs)
+        else:
+            kwargs.pop("return_value", None)
+            func(*args, **kwargs)
     except Exception:
+        logger.exception("Error running side_effect function '%s'", fname(func))
         if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
             raise
-        else:
-            logger.exception("Error running side_effect function '%s'", fname(func))
+
+
+def pass_return_value(func):
+    """
+    Inspect func signature looking for **kwargs.
+
+    If the function defines a variable kwargs parameter named "kwargs",
+    then we return True, which means we keep the side-effect origin
+    return value in the kwargs. If False  then we strip 'return_value'
+    from the kwargs before calling the function.
+
+    """
+    return inspect.getfullargspec(func).varkw == "kwargs"
 
 
 # global registry
