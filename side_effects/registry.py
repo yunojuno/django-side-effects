@@ -2,9 +2,10 @@
 This module contains the Registry class that is responsible for managing
 all of the registered side-effects.
 """
-from collections import defaultdict
+import inspect
 import logging
 import threading
+from collections import defaultdict
 
 from django.dispatch import Signal
 
@@ -157,12 +158,33 @@ def run_side_effects(label, *args, **kwargs):
 def _run_func(func, *args, **kwargs):
     """Run a single side-effect function and handle errors."""
     try:
-        func(*args, **kwargs)
+        if pass_return_value(func):
+            func(*args, **kwargs)
+        else:
+            kwargs.pop("return_value", None)
+            func(*args, **kwargs)
     except Exception:
+        logger.exception("Error running side_effect function '%s'", fname(func))
         if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
             raise
-        else:
-            logger.exception("Error running side_effect function '%s'", fname(func))
+
+
+def pass_return_value(func):
+    """
+    Inspect func signature looking for **kwargs.
+
+    If the function defines a variable kwargs parameter named "kwargs",
+    then we return True, which means we keep the side-effect origin
+    return value in the kwargs. If False  then we strip 'return_value'
+    from the kwargs before calling the function.
+
+    """
+    spec = inspect.getfullargspec(func)
+    return (
+        "return_value" in spec.args
+        or "return_value" in spec.kwonlyargs
+        or spec.varkw == "kwargs"
+    )
 
 
 # global registry
