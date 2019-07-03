@@ -89,7 +89,7 @@ The first decorator, ``has_side_effects``, is used to mark a function as one
 that has side effects:
 
 .. code:: python
-
+    
     # mark this function as one that has side-effects. The label
     # can be anything, and is used as a dict key for looking up
     # associated side-effects functions
@@ -293,6 +293,7 @@ NB If you implement side-effects in your project, you will most likely want to b
 The following code snippet shows how to use the `disable_side_effects` context manager, which returns a list of all the side-effects events that are fired. There is a matching function decorator, which will append the events list as an arg to the decorated function, in the same manner that `unittest.mock.patch` does.
 
 .. code:: python
+    from side_effects.decorators import disable_side_effects, has_side_effects
 
     @has_side_effects('do_foo')
     def foo():
@@ -303,16 +304,16 @@ The following code snippet shows how to use the `disable_side_effects` context m
         # to disable side-effects temporarily, use decorator
         with disable_side_effects() as events:
             foo()
-            assert events = ['do_foo']
+            assert events == ['do_foo']
             foo()
-            assert events = ['do_foo', 'do_foo']
+            assert events == ['do_foo', 'do_foo']
 
 
     # events list is added to the test function as an arg
     @disable_side_effects()
     def test_foo_without_side_effects(events):
         foo()
-        assert events = ['do_foo']
+        assert events == ['do_foo']
 
 In addition to these testing tools there is a universal 'kill-switch' which can be set using the env var `SIDE_EFFECTS_TEST_MODE=True`. This will completely disable all side-effects events. It is a useful tool when you are migrating a project over to the side_effects pattern - as it can highlight where existing tests are relying on side-effects from firing. Use with caution.
 
