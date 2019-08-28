@@ -33,7 +33,7 @@ class SideEffectsTestFailure(Exception):
         super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
 
 
-class Registry(defaultdict):
+class Registry:
 
     """
     Registry of side effect functions.
@@ -55,17 +55,17 @@ class Registry(defaultdict):
     suppressed_side_effect = Signal(providing_args=["label"])
 
     def __init__(self):
+        self._receivers = defaultdict(list)
         self._lock = threading.Lock()
         self._suppress = False
-        super(Registry, self).__init__(list)
 
     def by_label(self, value):
         """Filter registry by label (exact match)."""
-        return {k: v for k, v in self.items() if k == value}
+        return {k: v for k, v in self._receivers.items() if k == value}
 
     def by_label_contains(self, value):
         """Filter registry by label (contains string)."""
-        return {k: v for k, v in self.items() if value in k}
+        return {k: v for k, v in self._receivers.items() if value in k}
 
     def contains(self, label, func):
         """
@@ -75,7 +75,7 @@ class Registry(defaultdict):
         a simple `func in list` check doesn't work.
 
         """
-        return fname(func) in [fname(f) for f in self[label]]
+        return fname(func) in [fname(f) for f in self._receivers[label]]
 
     def add(self, label, func):
         """
@@ -91,12 +91,12 @@ class Registry(defaultdict):
 
         """
         with self._lock:
-            self[label].append(func)
+            self._receivers[label].append(func)
 
     def _run_side_effects(self, label, *args, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
-        for func in self[label]:
+        for func in self._receivers[label]:
             _run_func(func, *args, **kwargs)
 
     def run_side_effects(self, label, *args, **kwargs):
@@ -145,9 +145,9 @@ class disable_side_effects:
 
 def register_side_effect(label, func):
     """Helper function to add a side-effect function to the registry."""
-    if func in _registry[label]:
+    if func in _registry._receivers[label]:
         return
-    _registry.add(label, func)
+    _registry._receivers[label].append(func)
 
 
 def run_side_effects(label, *args, **kwargs):

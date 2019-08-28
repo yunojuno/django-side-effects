@@ -58,7 +58,7 @@ class Command(BaseCommand):
             events = _registry.by_label_contains(options["label-contains"]).items()
         else:
             self.stdout.write("\nRegistered side-effects:")
-            events = _registry.items()
+            events = _registry._receivers.items()
 
         if options["raw"]:
             self.print_raw(events)

@@ -10,7 +10,7 @@ class RegistryFunctionTests(TestCase):
     """Test the free functions in the registry module."""
 
     def setUp(self):
-        registry._registry.clear()
+        registry._registry._receivers.clear()
 
     def test_fname(self):
         self.assertEqual(
@@ -190,7 +190,7 @@ class RegistryTests(TestCase):
 
         r = registry.Registry()
         r.add("foo", test_func)
-        self.assertEqual(r.by_label("foo").items(), r.items())
+        self.assertEqual(r.by_label("foo").items(), r._receivers.items())
         self.assertEqual(r.by_label("foo"), {"foo": [test_func]})
         self.assertEqual(r.by_label("bar"), {})
 
@@ -200,7 +200,7 @@ class RegistryTests(TestCase):
 
         r = registry.Registry()
         r.add("foo", test_func)
-        self.assertEqual(r.by_label_contains("foo").items(), r.items())
+        self.assertEqual(r.by_label_contains("foo").items(), r._receivers.items())
         self.assertEqual(r.by_label_contains("f"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("fo"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func]})
@@ -234,7 +234,7 @@ class DecoratorTests(TestCase):
     """Tests for the decorators module."""
 
     def setUp(self):
-        registry._registry.clear()
+        registry._registry._receivers.clear()
 
     def test_http_response_check(self):
         """Test the HTTP response check rejects 4xx, 5xx status_codes."""
@@ -311,7 +311,7 @@ class ContextManagerTests(TestCase):
         def test_func():
             pass
 
-        registry._registry.clear()
+        registry._registry._receivers.clear()
         registry.register_side_effect("foo", test_func)
 
         registry.run_side_effects("foo")
