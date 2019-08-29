@@ -10,7 +10,7 @@ class RegistryFunctionTests(TestCase):
     """Test the free functions in the registry module."""
 
     def setUp(self):
-        registry._registry._receivers.clear()
+        registry._registry.clear()
 
     def test_fname(self):
         self.assertEqual(
@@ -181,7 +181,7 @@ class RegistryTests(TestCase):
 
         r = registry.Registry()
         self.assertFalse(r.contains("foo", test_func))
-        r.add("foo", test_func)
+        r.add_subscriber("foo", test_func)
         self.assertTrue(r.contains("foo", test_func))
 
     def test_by_label(self):
@@ -189,8 +189,8 @@ class RegistryTests(TestCase):
             pass
 
         r = registry.Registry()
-        r.add("foo", test_func)
-        self.assertEqual(r.by_label("foo").items(), r._receivers.items())
+        r.add_subscriber("foo", test_func)
+        self.assertEqual(r.by_label("foo").items(), r.subscribers.items())
         self.assertEqual(r.by_label("foo"), {"foo": [test_func]})
         self.assertEqual(r.by_label("bar"), {})
 
@@ -199,8 +199,8 @@ class RegistryTests(TestCase):
             pass
 
         r = registry.Registry()
-        r.add("foo", test_func)
-        self.assertEqual(r.by_label_contains("foo").items(), r._receivers.items())
+        r.add_subscriber("foo", test_func)
+        self.assertEqual(r.by_label_contains("foo").items(), r.subscribers.items())
         self.assertEqual(r.by_label_contains("f"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("fo"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func]})
@@ -214,7 +214,7 @@ class RegistryTests(TestCase):
             assert "return_value" not in kwargz
 
         r = registry.Registry()
-        r.add("foo", no_return_value)
+        r.add_subscriber("foo", no_return_value)
         r._run_side_effects("foo")
         r._run_side_effects("foo", return_value=None)
 
@@ -225,7 +225,7 @@ class RegistryTests(TestCase):
         def has_return_value(*args, **kwargs):
             assert "return_value" in kwargs
 
-        r.add("foo", has_return_value)
+        r.add_subscriber("foo", has_return_value)
         r._run_side_effects("foo", return_value=None)
 
 
@@ -234,7 +234,7 @@ class DecoratorTests(TestCase):
     """Tests for the decorators module."""
 
     def setUp(self):
-        registry._registry._receivers.clear()
+        registry._registry.clear()
 
     def test_http_response_check(self):
         """Test the HTTP response check rejects 4xx, 5xx status_codes."""
@@ -311,7 +311,7 @@ class ContextManagerTests(TestCase):
         def test_func():
             pass
 
-        registry._registry._receivers.clear()
+        registry._registry.clear()
         registry.register_side_effect("foo", test_func)
 
         registry.run_side_effects("foo")

@@ -55,17 +55,30 @@ class Registry:
     suppressed_side_effect = Signal(providing_args=["label"])
 
     def __init__(self):
-        self._receivers = defaultdict(list)
+        self._publishers = defaultdict(list)
+        self._subscribers = defaultdict(list)
         self._lock = threading.Lock()
         self._suppress = False
 
     def by_label(self, value):
         """Filter registry by label (exact match)."""
-        return {k: v for k, v in self._receivers.items() if k == value}
+        return {k: v for k, v in self.subscribers.items() if k == value}
 
     def by_label_contains(self, value):
         """Filter registry by label (contains string)."""
-        return {k: v for k, v in self._receivers.items() if value in k}
+        return {k: v for k, v in self.subscribers.items() if value in k}
+
+    @property
+    def subscribers(self):
+        return self._subscribers
+
+    @property
+    def publishers(self):
+        return self._publishers
+
+    def clear(self):
+        self._publishers = dict()
+        self._subscribers = defaultdict(list)
 
     def contains(self, label, func):
         """
@@ -75,9 +88,18 @@ class Registry:
         a simple `func in list` check doesn't work.
 
         """
-        return fname(func) in [fname(f) for f in self._receivers[label]]
+        return fname(func) in [fname(f) for f in self.subscribers[label]]
 
-    def add(self, label, func):
+    def add_publisher(self, label, func):
+        """Add a publishing function to the registry."""
+        with self._lock:
+            sig = inspect.signature(func)
+            if label in self.publishers:
+                if sig != self.publishers[label]:
+                    raise IncompatibleSignature()
+            self.publishers[label] = sig
+
+    def add_subscriber(self, label, func):
         """
         Add a function to the registry.
 
@@ -91,12 +113,12 @@ class Registry:
 
         """
         with self._lock:
-            self._receivers[label].append(func)
+            self.subscribers[label].append(func)
 
     def _run_side_effects(self, label, *args, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
-        for func in self._receivers[label]:
+        for func in self._subscribers[label]:
             _run_func(func, *args, **kwargs)
 
     def run_side_effects(self, label, *args, **kwargs):
@@ -145,9 +167,9 @@ class disable_side_effects:
 
 def register_side_effect(label, func):
     """Helper function to add a side-effect function to the registry."""
-    if func in _registry._receivers[label]:
+    if func in _registry._subscribers[label]:
         return
-    _registry._receivers[label].append(func)
+    _registry._subscribers[label].append(func)
 
 
 def run_side_effects(label, *args, **kwargs):
