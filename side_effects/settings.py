@@ -21,3 +21,8 @@ TEST_MODE = get_setting("SIDE_EFFECTS_TEST_MODE", False)
 # they shouldn't be.
 # Default = False
 TEST_MODE_FAIL = get_setting("SIDE_EFFECTS_TEST_MODE_FAIL", False)
+
+
+# When True, all receiving functions (`@is_side_effect_of`) must have
+# identical function signatures. Default is True.
+STRICT_MODE = get_setting("SIDE_EFFECTS_STRICT_MODEL", True)

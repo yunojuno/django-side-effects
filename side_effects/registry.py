@@ -6,6 +6,7 @@ import inspect
 import logging
 import threading
 from collections import defaultdict
+from inspect import signature
 
 from django.dispatch import Signal
 
@@ -33,6 +34,21 @@ class SideEffectsTestFailure(Exception):
         super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
 
 
+class SignatureMismatch(Exception):
+    """Error raised when a function with a signature that does
+    not match other functions registered to the same side-effect
+    is registered."""
+    def __init__(self, label, func):
+        super().__init__(f"Signature mismatch for label '{label}': {signature(func)}")
+
+
+def signature_mismatch(label, func):
+    """Handle a signature mismatch."""
+    if settings.STRICT_MODE:
+        raise SignatureMismatch(label, func)
+    logger.warning("Signature mismatch for '%s': ", label, signature(func))
+
+
 class Registry(defaultdict):
 
     """
@@ -57,7 +73,8 @@ class Registry(defaultdict):
     def __init__(self):
         self._lock = threading.Lock()
         self._suppress = False
-        super(Registry, self).__init__(list)
+        self._signatures = defaultdict(set)
+        super().__init__(list)
 
     def by_label(self, value):
         """Filter registry by label (exact match)."""
@@ -77,27 +94,50 @@ class Registry(defaultdict):
         """
         return fname(func) in [fname(f) for f in self[label]]
 
-    def add(self, label, func):
-        """
-        Add a function to the registry.
 
-        Args:
-            label: string, the name of the side-effect - this is used
-                to bind two function - the function that @has_side_effects
-                and the function that @is_side_effect.
-            func: a function that will be called when the side-effects are
-                executed - this will be passed all of the args and kwargs
-                of the original function.
-
+    def _check_signature(self, label: str, func: callable):
         """
+        Checks that the signature of a function matches any previously stored signature.
+
+        Raises SignatureMismatch error if the functions do not match.
+        """
+        func_sig = signature(func)
+        signatures = self._signatures[label]
+        count = len(signatures)
+        self._signatures[label].add(func_sig)
+
+        # A single signature for the label is expected
+        if len(signatures) == 1:
+            return
+
+        # We have more than one, but the overall count hasn't changed
+        if len(signatures) == count:
+            return
+
+        # At this point we know that the function we are checking is
+        # out of line with whatever was there before. Remember we have
+        # no control over the order in which we are checking, so we
+        # can't tell whether this function is wrong - just that it is
+        # different.
+        signature_mismatch(label, func)
+
+
+    def add(self, label: str, func: callable):
+        """Add a function to the registry."""
         with self._lock:
+            self._check_signature(label, func)
             self[label].append(func)
 
     def _run_side_effects(self, label, *args, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
         for func in self[label]:
-            _run_func(func, *args, **kwargs)
+            try:
+                signature(func).bind(*args, **kwargs)
+            except TypeError:
+                signature_mismatch(label, func)
+            else:
+                _run_func(func, *args, **kwargs)
 
     def run_side_effects(self, label, *args, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
@@ -157,12 +197,10 @@ def run_side_effects(label, *args, **kwargs):
 
 def _run_func(func, *args, **kwargs):
     """Run a single side-effect function and handle errors."""
+    if not pass_return_value(func):
+        kwargs.pop("return_value", None)
     try:
-        if pass_return_value(func):
-            func(*args, **kwargs)
-        else:
-            kwargs.pop("return_value", None)
-            func(*args, **kwargs)
+        func(*args, **kwargs)
     except Exception:
         logger.exception("Error running side_effect function '%s'", fname(func))
         if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
