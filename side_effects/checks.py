@@ -1,0 +1,34 @@
+import inspect
+
+from django.core.checks import messages
+
+from . import registry
+from .settings import STRICT_MODE
+
+REGISTRY = registry._registry
+
+
+def _message(label: str) -> messages.CheckMessage:
+    """Create Error or Warning message based on STRICT_MODE."""
+    msg = f'Multiple function signatures for event: "{label}"'
+    hint = (
+        f"Ensure that all functions decorated "
+        f'`@is_side_effect_of("{label}")` have identical signatures.'
+    )
+    return messages.Warning(msg, hint=hint, id="side_effects.W001")
+
+
+def signature_count(label: str) -> int:
+    """Number of unique function signatures for an event."""
+    signatures = [inspect.signature(func) for func in registry._registry[event]]
+    return len(set(signatures))
+
+
+@register()
+def check_function_signatures(app_configs, **kwargs):
+    """Check that all registered functions have the same signature."""
+    errors = []
+    for label in REGISTRY:
+        if signature_count(label) > 1:
+            errors.append(_message(label))
+    return errors

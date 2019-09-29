@@ -33,6 +33,15 @@ class SideEffectsTestFailure(Exception):
         super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
 
 
+class SignatureMismatch(Exception):
+    def __init__(self, label, func):
+        super().__init__(
+            f'Function signature mismatch for label "{label}" and function "{func.__name__}".'
+        )
+
+    pass
+
+
 class Registry(defaultdict):
 
     """
@@ -93,13 +102,13 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
-    def _run_side_effects(self, label, *args, **kwargs):
+    def _run_side_effects(self, label, *args, return_value=None, **kwargs):
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
         for func in self[label]:
-            _run_func(func, *args, **kwargs)
+            _run_func(func, *args, return_value=return_value, **kwargs)
 
-    def run_side_effects(self, label, *args, **kwargs):
+    def run_side_effects(self, label, *args, return_value=None, **kwargs):
         """Run registered side-effects functions, or suppress as appropriate.
 
         If TEST_MODE is on, or the _suppress attr is True, then the side-effects
@@ -111,7 +120,7 @@ class Registry(defaultdict):
         if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
-            self._run_side_effects(label, *args, **kwargs)
+            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
 class disable_side_effects:
@@ -150,41 +159,56 @@ def register_side_effect(label, func):
     _registry.add(label, func)
 
 
-def run_side_effects(label, *args, **kwargs):
+def run_side_effects(label, *args, return_value=None, **kwargs):
     """Run all of the side-effect functions registered for a label."""
-    _registry.run_side_effects(label, *args, **kwargs)
+    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
-def _run_func(func, *args, **kwargs):
+def _run_func(func, *args, return_value=None, **kwargs):
     """Run a single side-effect function and handle errors."""
     try:
-        if pass_return_value(func):
+        if try_bind(func, *args, return_value=return_value, **kwargs):
+            func(*args, return_value=return_value, **kwargs)
+        elif try_bind(func, *args, **kwargs):
             func(*args, **kwargs)
         else:
-            kwargs.pop("return_value", None)
-            func(*args, **kwargs)
+            raise SignatureMismatch(func)
+    except SignatureMismatch:
+        # always re-raise SignatureMismatch as this means we have been unable
+        # to run the side-effect function at all.
+        raise
     except Exception:
         logger.exception("Error running side_effect function '%s'", fname(func))
         if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
             raise
 
 
-def pass_return_value(func):
-    """
-    Inspect func signature looking for **kwargs.
+def try_bind(func, *args, **kwargs):
+    """Try binding args & kwargs to a given func."""
+    try:
+        inspect.signature(func).bind(*args, **kwargs)
+    except TypeError:
+        return False
+    else:
+        return True
 
-    If the function defines a variable kwargs parameter named "kwargs",
-    then we return True, which means we keep the side-effect origin
-    return value in the kwargs. If False  then we strip 'return_value'
-    from the kwargs before calling the function.
 
-    """
-    spec = inspect.getfullargspec(func)
-    return (
-        "return_value" in spec.args
-        or "return_value" in spec.kwonlyargs
-        or spec.varkw == "kwargs"
-    )
+# def pass_return_value(func):
+#     """
+#     Inspect func signature looking for **kwargs.
+
+#     If the function defines a variable kwargs parameter named "kwargs",
+#     then we return True, which means we keep the side-effect origin
+#     return value in the kwargs. If False  then we strip 'return_value'
+#     from the kwargs before calling the function.
+
+#     """
+#     spec = inspect.getfullargspec(func)
+#     return (
+#         "return_value" in spec.args
+#         or "return_value" in spec.kwonlyargs
+#         or spec.varkw == "kwargs"
+#     )
 
 
 # global registry

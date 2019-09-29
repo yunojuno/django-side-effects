@@ -54,7 +54,7 @@ class RegistryFunctionTests(TestCase):
             ["This is a multi-line docstring.", "", "It has multiple lines."],
         )
 
-    def test_pass_return_value(self):
+    def test_try_bind(self):
         def foo(arg1):
             pass
 
@@ -73,12 +73,8 @@ class RegistryFunctionTests(TestCase):
         def dozy(arg1, return_value=None):
             pass
 
-        self.assertFalse(registry.pass_return_value(foo))
-        self.assertFalse(registry.pass_return_value(bar))
-        self.assertTrue(registry.pass_return_value(baz))
-        self.assertTrue(registry.pass_return_value(dave))
-        self.assertTrue(registry.pass_return_value(dee))
-        self.assertTrue(registry.pass_return_value(dozy))
+        self.assertFalse(registry.try_bind(foo, return_value=1))
+        self.assertTrue(registry.try_bind(foo))
 
     def test_register_side_effect(self):
         def test_func1():
