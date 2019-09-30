@@ -89,7 +89,7 @@ The first decorator, ``has_side_effects``, is used to mark a function as one
 that has side effects:
 
 .. code:: python
-    
+
     # mark this function as one that has side-effects. The label
     # can be anything, and is used as a dict key for looking up
     # associated side-effects functions
@@ -143,11 +143,12 @@ or split them out further into the individual external systems.
 **Passing origin function return value to side-effects handlers**
 
 By default, side-effects handling functions must have the same function
-signature as the origin function. (Internally the `(*args, **kwargs)` are
+signature as the origin function. (Internally the ``(*args, **kwargs)`` are
 just a straight pass-through to the handler.) However, in certain cases it
 is very useful to have access to the origin function return value. A common
 case is where the origin function creates a new object. The framework handles
-this internally by introspecting the handler function, and looking for **kwargs.
+this internally by introspecting the handler function, and looking for
+``**kwargs``.
 
 This is best illustrated with an example:
 
@@ -290,9 +291,10 @@ If you are hacking on the project, please keep coverage up.
 
 NB If you implement side-effects in your project, you will most likely want to be able to turn off the side-effects when testing your own code (so that you are not actually sending emails, updating systems), but you also probably want to know that the side-effects events that you are expecting are fired.
 
-The following code snippet shows how to use the `disable_side_effects` context manager, which returns a list of all the side-effects events that are fired. There is a matching function decorator, which will append the events list as an arg to the decorated function, in the same manner that `unittest.mock.patch` does.
+The following code snippet shows how to use the ``disable_side_effects`` context manager, which returns a list of all the side-effects events that are fired. There is a matching function decorator, which will append the events list as an arg to the decorated function, in the same manner that ``unittest.mock.patch`` does.
 
 .. code:: python
+
     from side_effects.decorators import disable_side_effects, has_side_effects
 
     @has_side_effects('do_foo')
@@ -315,7 +317,7 @@ The following code snippet shows how to use the `disable_side_effects` context m
         foo()
         assert events == ['do_foo']
 
-In addition to these testing tools there is a universal 'kill-switch' which can be set using the env var `SIDE_EFFECTS_TEST_MODE=True`. This will completely disable all side-effects events. It is a useful tool when you are migrating a project over to the side_effects pattern - as it can highlight where existing tests are relying on side-effects from firing. Use with caution.
+In addition to these testing tools there is a universal 'kill-switch' which can be set using the env var ``SIDE_EFFECTS_TEST_MODE=True``. This will completely disable all side-effects events. It is a useful tool when you are migrating a project over to the side_effects pattern - as it can highlight where existing tests are relying on side-effects from firing. Use with caution.
 
 Contributing
 ------------
