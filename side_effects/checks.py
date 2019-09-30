@@ -1,11 +1,11 @@
 import inspect
 
-from django.core.checks import messages
+from django.core.checks import messages, register
 
 from . import registry
-from .settings import STRICT_MODE
 
 REGISTRY = registry._registry
+CHECK_ID_MULTIPLE_SIGNATURES = "side_effects.W001"
 
 
 def _message(label: str) -> messages.CheckMessage:
@@ -15,12 +15,12 @@ def _message(label: str) -> messages.CheckMessage:
         f"Ensure that all functions decorated "
         f'`@is_side_effect_of("{label}")` have identical signatures.'
     )
-    return messages.Warning(msg, hint=hint, id="side_effects.W001")
+    return messages.Warning(msg, hint=hint, id=CHECK_ID_MULTIPLE_SIGNATURES)
 
 
 def signature_count(label: str) -> int:
     """Number of unique function signatures for an event."""
-    signatures = [inspect.signature(func) for func in registry._registry[event]]
+    signatures = [inspect.signature(func) for func in registry._registry[label]]
     return len(set(signatures))
 
 

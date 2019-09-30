@@ -1,3 +1,3 @@
-__version__ = "1.2.6-dev2"
+__version__ = "1.3-dev0"
 
 default_app_config = "side_effects.apps.SideEffectsConfig"

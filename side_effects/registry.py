@@ -34,9 +34,9 @@ class SideEffectsTestFailure(Exception):
 
 
 class SignatureMismatch(Exception):
-    def __init__(self, label, func):
+    def __init__(self, func):
         super().__init__(
-            f'Function signature mismatch for label "{label}" and function "{func.__name__}".'
+            f"Side-effect signature mismatch for function `{func.__name__}{inspect.signature(func)}`."
         )
 
     pass
@@ -191,24 +191,6 @@ def try_bind(func, *args, **kwargs):
         return False
     else:
         return True
-
-
-# def pass_return_value(func):
-#     """
-#     Inspect func signature looking for **kwargs.
-
-#     If the function defines a variable kwargs parameter named "kwargs",
-#     then we return True, which means we keep the side-effect origin
-#     return value in the kwargs. If False  then we strip 'return_value'
-#     from the kwargs before calling the function.
-
-#     """
-#     spec = inspect.getfullargspec(func)
-#     return (
-#         "return_value" in spec.args
-#         or "return_value" in spec.kwonlyargs
-#         or spec.varkw == "kwargs"
-#     )
 
 
 # global registry
