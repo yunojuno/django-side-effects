@@ -1,8 +1,9 @@
 from unittest import mock
+from unittest.case import TestCase
 
 from django.test import TestCase
 
-from side_effects import registry, decorators, settings
+from side_effects import registry, decorators, settings, checks
 
 
 class RegistryFunctionTests(TestCase):
@@ -54,31 +55,41 @@ class RegistryFunctionTests(TestCase):
             ["This is a multi-line docstring.", "", "It has multiple lines."],
         )
 
-    def test_pass_return_value(self):
-        def foo(arg1):
+    def test_try_bind__with_return_value(self):
+        def foo1(return_value):
             pass
 
-        def bar(arg1, **kwargz):
+        def foo2(arg1, return_value):
             pass
 
-        def baz(*args, **kwargs):
+        def foo3(*args, return_value):
             pass
 
-        def dave(*args, return_value):
+        def foo4(return_value, **kwargs):
             pass
 
-        def dee(arg1, return_value):
+        def foo5(arg1, **kwargs):
             pass
 
-        def dozy(arg1, return_value=None):
+        self.assertTrue(registry.try_bind(foo1, return_value=1))
+        self.assertTrue(registry.try_bind(foo2, 1, return_value=1))
+        self.assertTrue(registry.try_bind(foo3, 1, 2, 3, return_value=1))
+        self.assertTrue(registry.try_bind(foo4, bar="baz", return_value=1))
+        self.assertTrue(registry.try_bind(foo5, 1, return_value=1))
+
+    def test_try_bind__without_return_value(self):
+        def foo1():
             pass
 
-        self.assertFalse(registry.pass_return_value(foo))
-        self.assertFalse(registry.pass_return_value(bar))
-        self.assertTrue(registry.pass_return_value(baz))
-        self.assertTrue(registry.pass_return_value(dave))
-        self.assertTrue(registry.pass_return_value(dee))
-        self.assertTrue(registry.pass_return_value(dozy))
+        def foo2(arg1):
+            pass
+
+        def foo3(*args):
+            pass
+
+        self.assertFalse(registry.try_bind(foo1, return_value=1))
+        self.assertFalse(registry.try_bind(foo2, 1, return_value=1))
+        self.assertFalse(registry.try_bind(foo3, 1, 2, 3, return_value=1))
 
     def test_register_side_effect(self):
         def test_func1():
@@ -167,6 +178,17 @@ class RegistryFunctionTests(TestCase):
         with mock.patch.object(settings, "ABORT_ON_ERROR", True):
             self.assertTrue(settings.ABORT_ON_ERROR)
             self.assertRaises(Exception, registry._run_func, test_func)
+
+    def test__run_func__signature_mismatch(self):
+        """Test the _run_func function always raises SignatureMismatch."""
+
+        def test_func():
+            raise Exception("Pah")
+
+        with mock.patch.object(settings, "ABORT_ON_ERROR", False):
+            self.assertRaises(
+                registry.SignatureMismatch, registry._run_func, test_func, 1
+            )
 
 
 class RegistryTests(TestCase):
@@ -326,3 +348,25 @@ class ContextManagerTests(TestCase):
         # re-enabled
         registry.run_side_effects("foo")
         self.assertEqual(mock_func.call_count, 2)
+
+
+class SystemCheckTests(TestCase):
+    def test_multiple_functions(self):
+        def foo():
+            pass
+
+        def bar():
+            pass
+
+        def baz(arg1):
+            pass
+
+        registry._registry.clear()
+        registry.register_side_effect("test", foo)
+        registry.register_side_effect("test", bar)
+        self.assertEqual(checks.check_function_signatures(None), [])
+
+        registry.register_side_effect("test", baz)
+        errors = checks.check_function_signatures(None)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].id, checks.CHECK_ID_MULTIPLE_SIGNATURES)

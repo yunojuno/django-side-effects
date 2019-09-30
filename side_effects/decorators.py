@@ -55,8 +55,9 @@ def has_side_effects(label: str, run_on_exit: bool = http_response_check):
             """Run the original function and send the signal if successful."""
             return_value = func(*args, **kwargs)
             if run_on_exit(return_value):
-                kwargs["return_value"] = return_value
-                registry.run_side_effects(label, *args, **kwargs)
+                registry.run_side_effects(
+                    label, *args, return_value=return_value, **kwargs
+                )
             return return_value
 
         return inner_func
