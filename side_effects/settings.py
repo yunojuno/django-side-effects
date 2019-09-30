@@ -1,6 +1,5 @@
-from env_utils import get_bool
-
 from django.conf import settings
+from env_utils import get_bool
 
 
 def get_setting(setting_name, default_value):
