@@ -68,10 +68,14 @@ class RegistryFunctionTests(TestCase):
         def foo4(return_value, **kwargs):
             pass
 
+        def foo5(arg1, **kwargs):
+            pass
+
         self.assertTrue(registry.try_bind(foo1, return_value=1))
         self.assertTrue(registry.try_bind(foo2, 1, return_value=1))
         self.assertTrue(registry.try_bind(foo3, 1, 2, 3, return_value=1))
         self.assertTrue(registry.try_bind(foo4, bar="baz", return_value=1))
+        self.assertTrue(registry.try_bind(foo5, 1, return_value=1))
 
     def test_try_bind__without_return_value(self):
         def foo1():
