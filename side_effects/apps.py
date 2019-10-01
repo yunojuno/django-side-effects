@@ -1,3 +1,4 @@
+# pylint: disable=unused-import
 import logging
 
 from django.apps import AppConfig
@@ -12,5 +13,7 @@ class SideEffectsConfig(AppConfig):
     configs = []
 
     def ready(self):
-        logger.info("Initialising side_effects registry")
-        from . import registry  # noqa
+        logger.debug("Initialising side_effects registry")
+        from . import registry
+        logger.debug("Registering side_effects checks")
+        from . import checks
