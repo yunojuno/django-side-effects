@@ -3,7 +3,7 @@ from unittest.case import TestCase
 
 from django.test import TestCase
 
-from side_effects import registry, decorators, settings, checks
+from side_effects import checks, decorators, registry, settings
 
 
 class RegistryFunctionTests(TestCase):
@@ -249,6 +249,31 @@ class RegistryTests(TestCase):
 
         r.add("foo", has_return_value)
         r._run_side_effects("foo", return_value=None)
+
+    def test_try_bind_all(self):
+        def foo1(return_value):
+            pass
+
+        def foo2(arg1, return_value):
+            pass
+
+        def foo3(*args, return_value):
+            pass
+
+        def foo4(return_value, **kwargs):
+            pass
+
+        def foo5(arg1, **kwargs):
+            pass
+
+        r = registry.Registry()
+        r.add("foo", foo1)
+        r.add("foo", foo2)
+        r.add("foo", foo3)
+        r.add("foo", foo4)
+        r.add("foo", foo5)
+        r.try_bind_all("foo", 1)
+        self.assertRaises(registry.SignatureMismatch, r.try_bind_all, "foo", 1, 2)
 
 
 class DecoratorTests(TestCase):

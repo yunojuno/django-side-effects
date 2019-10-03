@@ -116,11 +116,31 @@ class Registry(defaultdict):
         primarily used by the disable_side_effects context manager to register
         which side-effects events were suppressed (for testing purposes).
 
+        NB even if the side-effects themselves are not run, this method will try
+        to bind all of the receiver functions - this is to ensure that incompatible
+        functions fail hard and early.
+
         """
+        # TODO: this is all becoming over-complex - need to simplify this
+        self.try_bind_all(label, *args, return_value=return_value, **kwargs)
         if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
             self._run_side_effects(label, *args, return_value=return_value, **kwargs)
+
+    def try_bind_all(self, label, *args, return_value=None, **kwargs):
+        """
+        Test all receivers for signature compatibility.
+
+        Raise SignatureMismatch if any function does not match.
+
+        """
+        for func in self[label]:
+            if not (
+                try_bind(func, *args, return_value=return_value, **kwargs)
+                or try_bind(func, *args, **kwargs)
+            ):
+                raise SignatureMismatch(func)
 
 
 class disable_side_effects:

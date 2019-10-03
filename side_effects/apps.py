@@ -15,5 +15,6 @@ class SideEffectsConfig(AppConfig):
     def ready(self):
         logger.debug("Initialising side_effects registry")
         from . import registry
+
         logger.debug("Registering side_effects checks")
         from . import checks
