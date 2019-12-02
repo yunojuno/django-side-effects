@@ -2,6 +2,7 @@ import json
 from os import sys
 
 from django.core.management.base import BaseCommand
+
 from side_effects.registry import _registry, docstring, fname
 
 
