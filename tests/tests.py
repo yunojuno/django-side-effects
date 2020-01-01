@@ -1,9 +1,17 @@
+import pkg_resources
 from unittest import mock
 from unittest.case import TestCase
 
 from django.test import TestCase
 
-from side_effects import checks, decorators, registry, settings
+from side_effects import __version__, checks, decorators, registry, settings
+
+
+class VersionTests(TestCase):
+
+    def test_version(self):
+        my_version = pkg_resources.get_distribution('side_effects').version
+        assert my_version == __version__
 
 
 class RegistryFunctionTests(TestCase):
