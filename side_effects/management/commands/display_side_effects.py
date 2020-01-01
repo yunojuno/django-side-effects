@@ -1,8 +1,8 @@
+# type: ignore
 import json
 from os import sys
 
 from django.core.management.base import BaseCommand
-
 from side_effects.registry import _registry, docstring, fname
 
 
@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     help = "Displays project side_effects."
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.missing_docstrings = []
         super().__init__(*args, **kwargs)
 
@@ -30,7 +30,10 @@ class Command(BaseCommand):
             action="store_true",
             default=False,
             dest="strict",
-            help="Exit with a non-zero exit code if any registered functions have no docstrings.",
+            help=(
+                "Exit with a non-zero exit code if any registered functions "
+                "have no docstrings."
+            ),
         )
         parser.add_argument(
             "--label",

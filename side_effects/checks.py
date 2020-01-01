@@ -1,5 +1,7 @@
 import inspect
+from typing import Any, List
 
+from django.apps import AppConfig
 from django.core.checks import messages, register
 
 from . import registry
@@ -19,15 +21,15 @@ def _message(label: str) -> messages.CheckMessage:
 
 
 def signature_count(label: str) -> int:
-    """Number of unique function signatures for an event."""
+    """Return number of unique function signatures for an event."""
     signatures = [inspect.signature(func) for func in registry._registry[label]]
     return len(set(signatures))
 
 
 @register()
-def check_function_signatures(app_configs, **kwargs):
+def check_function_signatures(app_configs: List[AppConfig], **kwargs: Any) -> List[str]:
     """Check that all registered functions have the same signature."""
-    errors = []
+    errors = []  # type: List[str]
     for label in REGISTRY:
         if signature_count(label) > 1:
             errors.append(_message(label))

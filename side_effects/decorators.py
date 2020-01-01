@@ -1,11 +1,12 @@
 from functools import wraps
+from typing import Any, Callable
 
 from django.http import HttpResponse
 
 from . import registry
 
 
-def http_response_check(response):
+def http_response_check(response: HttpResponse) -> bool:
     """Return True for anything other than 4xx, 5xx status_codes."""
     if isinstance(response, HttpResponse):
         return not (400 <= response.status_code < 600)
@@ -13,7 +14,9 @@ def http_response_check(response):
         return True
 
 
-def has_side_effects(label: str, run_on_exit: bool = http_response_check):
+def has_side_effects(
+    label: str, run_on_exit: Callable = http_response_check
+) -> Callable:
     """
     Run decorated function and raise side_effects signal when complete.
 
@@ -49,9 +52,9 @@ def has_side_effects(label: str, run_on_exit: bool = http_response_check):
 
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args, **kwargs):
+        def inner_func(*args: Any, **kwargs: Any) -> Any:
             """Run the original function and send the signal if successful."""
             return_value = func(*args, **kwargs)
             if run_on_exit(return_value):
@@ -65,14 +68,14 @@ def has_side_effects(label: str, run_on_exit: bool = http_response_check):
     return decorator
 
 
-def is_side_effect_of(label):
+def is_side_effect_of(label: str) -> Callable:
     """Register a function as a side-effect."""
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         registry.register_side_effect(label, func)
 
         @wraps(func)
-        def inner_func(*args, **kwargs):
+        def inner_func(*args: Any, **kwargs: Any) -> Any:
             return func(*args, **kwargs)
 
         return inner_func
@@ -80,12 +83,12 @@ def is_side_effect_of(label):
     return decorator
 
 
-def disable_side_effects():
+def disable_side_effects() -> Callable:
     """Disable side-effects from firing - used for testing."""
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args, **kwargs):
+        def inner_func(*args: Any, **kwargs: Any) -> Any:
             with registry.disable_side_effects() as events:
                 return func(*args, events, **kwargs)
 
