@@ -1,4 +1,6 @@
 """Registry is responsible for managing all of the registered side-effects."""
+from __future__ import annotations
+
 import inspect
 import logging
 import threading
@@ -9,6 +11,7 @@ from django.dispatch import Signal
 
 from . import settings
 
+RegistryType = Dict[str, List[Callable]]
 logger = logging.getLogger(__name__)
 
 
@@ -66,11 +69,11 @@ class Registry(defaultdict):
         self._suppress = False
         super(Registry, self).__init__(list)
 
-    def by_label(self, value: str) -> Dict[str, Callable]:
+    def by_label(self, value: str) -> RegistryType:
         """Filter registry by label (exact match)."""
         return {k: v for k, v in self.items() if k == value}
 
-    def by_label_contains(self, value: str) -> Dict[str, Callable]:
+    def by_label_contains(self, value: str) -> RegistryType:
         """Filter registry by label (contains string)."""
         return {k: v for k, v in self.items() if value in k}
 

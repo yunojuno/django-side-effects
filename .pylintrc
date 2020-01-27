@@ -3,11 +3,22 @@
 [MASTER]
 init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()));"
 ignore=CVS,.git,.tox,.cache,.venv,frontend
-load-plugins=pylint_django
 
 [MESSAGES CONTROL]
 disable=all
-enable=bare-except,broad-except,unused-import,assert-false,assert-outside-tests,deprecated-login-required,deprecated-user-passes-test,direct-logging,import-silk,import-pdb,dangerous-default-value,relative-beyond-top-level,anomalous-backslash-in-string,logging-not-lazy
+enable=
+    anomalous-backslash-in-string
+    assert-false
+    assert-outside-tests
+    bare-except
+    broad-except
+    dangerous-default-value
+    direct-logging
+    import-pdb
+    import-silk
+    logging-not-lazy
+    relative-beyond-top-level
+    unused-import
 
 [REPORTS]
 output-format=text

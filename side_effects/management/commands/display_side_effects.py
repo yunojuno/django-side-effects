@@ -1,20 +1,23 @@
-# type: ignore
+from __future__ import annotations
+
+import argparse
 import json
-from os import sys
+import os
+from typing import Any, List
 
 from django.core.management.base import BaseCommand
-from side_effects.registry import _registry, docstring, fname
+from side_effects.registry import RegistryType, _registry, docstring, fname
 
 
 class Command(BaseCommand):
 
     help = "Displays project side_effects."
 
-    def __init__(self, *args, **kwargs) -> None:
-        self.missing_docstrings = []
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.missing_docstrings = []  # type: List[str]
         super().__init__(*args, **kwargs)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--raw",
             action="store_true",
@@ -48,20 +51,20 @@ class Command(BaseCommand):
             help="Filter side-effects on event labels containing the supplied value.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         if options["label"]:
             self.stdout.write(
                 f"\nSide-effects for event matching '{options['label']}':"
             )
-            events = _registry.by_label(options["label"]).items()
+            events = _registry.by_label(options["label"])
         elif options["label-contains"]:
             self.stdout.write(
                 f"\nSide-effects for events matching '*{options['label-contains']}*':"
             )
-            events = _registry.by_label_contains(options["label-contains"]).items()
+            events = _registry.by_label_contains(options["label-contains"])
         else:
             self.stdout.write("\nRegistered side-effects:")
-            events = _registry.items()
+            events = _registry
 
         if options["raw"]:
             self.print_raw(events)
@@ -75,14 +78,14 @@ class Command(BaseCommand):
         if options["strict"]:
             self.exit()
 
-    def print_raw(self, events: dict) -> None:
+    def print_raw(self, events: RegistryType) -> None:
         """Print out the fully-qualified named for each mapped function."""
-        raw = {label: [fname(f) for f in funcs] for label, funcs in events}
+        raw = {label: [fname(f) for f in funcs] for label, funcs in events.items()}
         self.stdout.write(json.dumps(raw, indent=4))
 
-    def print_verbose(self, events: dict) -> None:
+    def print_verbose(self, events: RegistryType) -> None:
         """Print the entire docstring for each mapped function."""
-        for label, funcs in events:
+        for label, funcs in events.items():
             self.stdout.write("")
             self.stdout.write(label)
             self.stdout.write("")
@@ -99,9 +102,9 @@ class Command(BaseCommand):
                         self.stdout.write(f"    {line}")
                     self.stdout.write("")
 
-    def print_default(self, events: dict) -> None:
+    def print_default(self, events: RegistryType) -> None:
         """Print the first line of the docstring for each mapped function."""
-        for label, funcs in events:
+        for label, funcs in events.items():
             self.stdout.write("")
             self.stdout.write(label)
             for func in funcs:
@@ -112,7 +115,7 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"  - {docs[0]}")
 
-    def print_missing(self):
+    def print_missing(self) -> None:
         """Print out the contents of self.missing_docstrings."""
         if self.missing_docstrings:
             self.stderr.write("\nThe following functions have no docstrings:")
@@ -121,11 +124,12 @@ class Command(BaseCommand):
         else:
             self.stdout.write("\nAll registered functions have docstrings")
 
-    def exit(self):
-        """Exit based on whether there are any missing docstrings.
+    def exit(self) -> None:
+        """
+        Exit based on whether there are any missing docstrings.
 
         This is used in CI scenarios to fail a build in which there are missing
         docstrings.
 
         """
-        sys.exit(len(self.missing_docstrings))
+        os.sys.exit(len(self.missing_docstrings))  # type: ignore
