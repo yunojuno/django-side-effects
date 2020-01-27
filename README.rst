@@ -12,9 +12,9 @@ Django app for managing external side effects.
 Python2/3
 ---------
 
-**This project is now Python3, Django 1.11+ only on master.**
+**This project now supports Python37/38 and Django 2.2+ only on master.**
 
-The legacy Python2 code is now parked in the python2 branch.
+Legacy versions are tagged.
 
 Background
 ----------
