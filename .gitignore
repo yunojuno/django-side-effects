@@ -1,6 +1,6 @@
-*.pyc
-*.egg-info
 .coverage
 .tox
-poetry.lock
-Pipfile.lock
+.venv
+*.egg-info
+*.lock
+*.pyc

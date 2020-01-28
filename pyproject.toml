@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "django-side-effects"
-version = "1.6"
+version = "1.6.1"
 description = "Django app for managing external side effects."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]
 maintainers = ["YunoJuno <code@yunojuno.com>"]
 readme = "README.rst"
-homepage = "https://github.com/yunojuno/poetry-template"
-repository = "https://github.com/yunojuno/poetry-template"
+homepage = "https://github.com/yunojuno/django-side-effects"
+repository = "https://github.com/yunojuno/django-side-effects"
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django :: 2.2",
@@ -20,7 +20,7 @@ classifiers = [
 packages = [{ include = "side_effects" }]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 django = "^2.2 || ^3.0"
 python-env-utils = "*"
 
