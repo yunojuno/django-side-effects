@@ -1,6 +1,7 @@
 from unittest import mock
 
 from django.test import TestCase
+
 from side_effects import decorators, registry
 
 
