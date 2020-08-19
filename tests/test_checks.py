@@ -1,4 +1,5 @@
 from django.test import TestCase
+
 from side_effects import checks, registry
 
 

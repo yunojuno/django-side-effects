@@ -6,6 +6,7 @@ import os
 from typing import Any, List
 
 from django.core.management.base import BaseCommand
+
 from side_effects.registry import RegistryType, _registry, docstring, fname
 
 
