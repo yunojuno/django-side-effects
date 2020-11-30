@@ -1,3 +1,5 @@
+import pytest
+from side_effects.decorators import has_side_effects
 from unittest import mock
 
 from django.test import TestCase
@@ -76,6 +78,19 @@ class DecoratorTests(TestCase):
         self.assertEqual(events, ["foo"])
         test_func()
         self.assertEqual(events, ["foo", "foo"])
+
+    @mock.patch("side_effects.decorators.registry")
+    def test_disable_on_error(self, mock_registry):
+        """Check that run_side_effects is not called on error."""
+
+        @has_side_effects("foo")
+        def foo():
+            raise Exception("HELP")
+
+        with pytest.raises(Exception):
+            foo()
+
+        assert mock_registry.run_side_effects.call_count == 0
 
 
 class ContextManagerTests(TestCase):
