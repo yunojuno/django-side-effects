@@ -1,10 +1,10 @@
-import pytest
-from side_effects.decorators import has_side_effects
 from unittest import mock
 
+import pytest
 from django.test import TestCase
 
 from side_effects import decorators, registry
+from side_effects.decorators import has_side_effects
 
 
 class DecoratorTests(TestCase):

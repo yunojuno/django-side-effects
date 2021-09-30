@@ -188,7 +188,6 @@ class RegistryFunctionTests(TestCase):
 
 
 class RegistryTests(TestCase):
-
     """Tests for the registry module."""
 
     def test_registry_add_contains(self):

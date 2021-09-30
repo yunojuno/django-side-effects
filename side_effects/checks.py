@@ -29,7 +29,7 @@ def signature_count(label: str) -> int:
 
 
 @register()
-def check_function_signatures(app_configs: List[AppConfig], **kwargs: Any) -> List[str]:
+def check_function_signatures(app_configs: list[AppConfig], **kwargs: Any) -> list[str]:
     """Check that all registered functions have the same signature."""
     errors = []  # type: List[str]
     for label in REGISTRY:

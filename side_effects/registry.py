@@ -5,7 +5,7 @@ import inspect
 import logging
 import threading
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 from django.dispatch import Signal
 
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 def fname(func: Callable) -> str:
     """Return fully-qualified function name."""
-    return "%s.%s" % (func.__module__, func.__name__)
+    return "{}.{}".format(func.__module__, func.__name__)
 
 
-def docstring(func: Callable) -> Optional[List[str]]:
+def docstring(func: Callable) -> list[str] | None:
     """Split and strip function docstrings into a list of lines."""
     try:
         lines = func.__doc__.strip().split("\n")  # type: ignore
@@ -105,7 +105,7 @@ class Registry(defaultdict):
             self[label].append(func)
 
     def _run_side_effects(
-        self, label: str, *args: Any, return_value: Optional[Any] = None, **kwargs: Any
+        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
@@ -113,7 +113,7 @@ class Registry(defaultdict):
             _run_func(func, *args, return_value=return_value, **kwargs)
 
     def run_side_effects(
-        self, label: str, *args: Any, return_value: Optional[Any] = None, **kwargs: Any
+        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
         """
         Run registered side-effects functions, or suppress as appropriate.
@@ -136,7 +136,7 @@ class Registry(defaultdict):
             self._run_side_effects(label, *args, return_value=return_value, **kwargs)
 
     def try_bind_all(
-        self, label: str, *args: Any, return_value: Optional[Any] = None, **kwargs: Any
+        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
         """
         Test all receivers for signature compatibility.
@@ -168,7 +168,7 @@ class disable_side_effects:
         self.events = []  # type: List[str]
         pass
 
-    def __enter__(self) -> List[str]:
+    def __enter__(self) -> list[str]:
         _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
         _registry._suppress = True
         return self.events
@@ -189,14 +189,14 @@ def register_side_effect(label: str, func: Callable) -> None:
 
 
 def run_side_effects(
-    label: str, *args: Any, return_value: Optional[Any] = None, **kwargs: Any
+    label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
     """Run all of the side-effect functions registered for a label."""
     _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
 def _run_func(
-    func: Callable, *args: Any, return_value: Optional[Any] = None, **kwargs: Any
+    func: Callable, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
     """Run a single side-effect function and handle errors."""
     try:
@@ -210,7 +210,7 @@ def _run_func(
         # always re-raise SignatureMismatch as this means we have been unable
         # to run the side-effect function at all.
         raise
-    except Exception:  # pylint: disable=broad-except
+    except Exception:  # noqa: B902
         logger.exception("Error running side_effect function '%s'", fname(func))
         if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
             raise

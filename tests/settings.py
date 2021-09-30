@@ -3,4 +3,4 @@ DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memor
 
 INSTALLED_APPS = ("side_effects", "tests")
 
-SECRET_KEY = "side-effects"
+SECRET_KEY = "side-effects"  # noqa: S105
