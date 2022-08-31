@@ -252,7 +252,7 @@ to make your code clear and easy to document. The key differences are:
 3. (TODO) Async processing of receiver functions
 
 It may well be that this project merges back in to the signals pattern in
-due course - at the moment we still experimenting.
+due course - at the moment we are still experimenting.
 
 
 Installation
@@ -295,16 +295,16 @@ The following code snippet shows how to use the ``disable_side_effects`` context
 
 .. code:: python
 
-    from side_effects.decorators import disable_side_effects, has_side_effects
+    from side_effects import decorators, registry
 
-    @has_side_effects('do_foo')
+    @decorators.has_side_effects('do_foo')
     def foo():
         pass
 
     def test_foo():
 
         # to disable side-effects temporarily, use decorator
-        with disable_side_effects() as events:
+        with registry.disable_side_effects() as events:
             foo()
             assert events == ['do_foo']
             foo()
@@ -312,8 +312,8 @@ The following code snippet shows how to use the ``disable_side_effects`` context
 
 
     # events list is added to the test function as an arg
-    @disable_side_effects()
-    def test_foo_without_side_effects(events):
+    @decorators.disable_side_effects()
+    def test_foo_without_side_effects(events: list[str]):
         foo()
         assert events == ['do_foo']
 
