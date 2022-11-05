@@ -194,12 +194,6 @@ def run_side_effects(
     label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
     """Run all of the side-effect functions registered for a label."""
-    if not transaction.get_autocommit():
-        getattr(logger, settings.ATOMIC_TX_LOG_LEVEL)(
-            "Side-effects [%s] are being run within the scope of an atomic "
-            "transaction. This may have unintended consequences.",
-            label,
-        )
     _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
 
 
