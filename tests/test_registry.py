@@ -156,7 +156,8 @@ class RegistryFunctionTests(TestCase):
         registry.run_side_effects("foo")
         mock_logger.warning.assert_called_once_with(
             "Side-effects [%s] are being run within the scope of an atomic "
-            "transaction. This may have unintended consequences.", "foo"
+            "transaction. This may have unintended consequences.",
+            "foo",
         )
 
     def test__run_func__no_return_value(self):
