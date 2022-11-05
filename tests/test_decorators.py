@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from django.db import transaction
 from django.test import TestCase
 
 from side_effects import decorators, registry
@@ -36,7 +37,9 @@ class DecoratorTests(TestCase):
 
         func = decorators.has_side_effects("foo")(test_func)
         func(1)
-        mock_registry.run_side_effects.assert_called_with("foo", 1, return_value=2)
+        mock_registry.run_side_effects_on_commit.assert_called_with(
+            "foo", 1, return_value=2
+        )
 
     @mock.patch("side_effects.decorators.registry")
     def test_has_side_effects__run_on_exit_false(self, mock_registry):
@@ -91,6 +94,40 @@ class DecoratorTests(TestCase):
             foo()
 
         assert mock_registry.run_side_effects.call_count == 0
+
+    def test_transaction_rollback(self):
+        """Test the transaction awareness of the decorator."""
+
+        @transaction.atomic
+        def outer_func() -> None:
+            inner_func()
+            raise Exception("Rolling back transaction")
+
+        @has_side_effects("foo")
+        @transaction.atomic
+        def inner_func() -> None:
+            conn = transaction.get_connection()
+            assert conn.in_atomic_block
+
+        # calling inner_func directly will trigger has_side_effects, which
+        # will defer the run_side_effects_on_commit call by passing it to
+        # the transaction.on_commit function.
+        with TestCase.captureOnCommitCallbacks() as callbacks:
+            inner_func()
+        assert len(callbacks) == 1
+        assert callbacks[0].func == registry._registry.run_side_effects
+        assert callbacks[0].args == ("foo",)
+        assert callbacks[0].keywords == {"return_value": None}
+
+        # calling outer_func will rollback the transaction, which will
+        # in turn clear out the callbacks registered with on_commit - so
+        # no side-effects will run.
+        with TestCase.captureOnCommitCallbacks() as callbacks:
+            try:
+                outer_func()
+            except:  # noqa
+                pass
+        assert callbacks == []
 
 
 class ContextManagerTests(TestCase):

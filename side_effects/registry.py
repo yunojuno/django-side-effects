@@ -5,6 +5,7 @@ import inspect
 import logging
 import threading
 from collections import defaultdict
+from functools import partial
 from typing import Any, Callable, Dict, List
 
 from django.db import transaction
@@ -200,6 +201,21 @@ def run_side_effects(
             label,
         )
     _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
+
+
+def run_side_effects_on_commit(
+    label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
+) -> None:
+    """Run all of the side-effects after current transaction on_commit."""
+    transaction.on_commit(
+        partial(
+            _registry.run_side_effects,
+            label,
+            *args,
+            return_value=return_value,
+            **kwargs,
+        )
+    )
 
 
 def _run_func(
