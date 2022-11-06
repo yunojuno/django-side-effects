@@ -94,7 +94,7 @@ class DecoratorTests(TestCase):
 
 
 class ContextManagerTests(TestCase):
-    @mock.patch("side_effects.registry._run_func")
+    @mock.patch.object(registry.Registry, "run_func")
     def test_disable_side_effects(self, mock_func):
         """Side-effects can be temporarily disabled."""
 

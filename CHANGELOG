@@ -1,0 +1,9 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## v2.0 (pre-release)
+
+* Add support for Python 3.11
+* Drop support for Django 3.7
+* Remove `run_on_exit` param from `has_side_effects`

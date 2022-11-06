@@ -56,7 +56,7 @@ def has_side_effects(
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             """Run the original function and send the signal if successful."""
             return_value = func(*args, **kwargs)
             if run_on_exit(return_value):
@@ -77,7 +77,7 @@ def is_side_effect_of(label: str) -> Callable:
         registry.register_side_effect(label, func)
 
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             return func(*args, **kwargs)
 
         return inner_func
@@ -90,7 +90,7 @@ def disable_side_effects() -> Callable:
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             with registry.disable_side_effects() as events:
                 return func(*args, events, **kwargs)
 
