@@ -97,25 +97,6 @@ that has side effects:
     def foo(*args, **kwargs):
         pass
 
-**Decorating view functions**
-
-By default, the ``has_side_effects`` decorator will run so long as the inner
-function does not raise an exception. View functions, however, are a paticular
-case where the function may run, and return a perfectly valid ``HttpResponse``
-object, but you do **not** want the side effects to run, as the response object
-has a ``status_code`` of 404, 500, etc. In this case, you want to inspect the
-inner function return value before deciding whether to fire the side effects
-functions. In order to support this, the ``has_side_effects`` decorator has
-a kwarg ``run_on_exit`` which takes a function that takes a single parameter,
-the return value from the inner function, and must return ``True`` or ``False``
-which determines whether to run the side effects.
-
-The ``decorators`` module contains the default argument for this kwarg, a
-function called ``http_response_check``. This will return ``False`` if the
-inner function return value is an ``HttpResponse`` object with a status
-code in the 4xx-5xx range.
-
-
 The second decorator, ``is_side_effect_of``, is used to bind those functions
 that implement the side effects to the origin function:
 

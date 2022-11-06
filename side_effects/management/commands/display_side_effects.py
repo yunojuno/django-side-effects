@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
     help = "Displays project side_effects."
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         self.missing_docstrings = []  # type: List[str]
         super().__init__(*args, **kwargs)
 

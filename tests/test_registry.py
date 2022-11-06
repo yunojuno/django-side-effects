@@ -68,11 +68,13 @@ class RegistryFunctionTests(TestCase):
         def foo5(arg1, **kwargs):
             pass
 
-        self.assertTrue(registry.try_bind(foo1, return_value=1))
-        self.assertTrue(registry.try_bind(foo2, 1, return_value=1))
-        self.assertTrue(registry.try_bind(foo3, 1, 2, 3, return_value=1))
-        self.assertTrue(registry.try_bind(foo4, bar="baz", return_value=1))
-        self.assertTrue(registry.try_bind(foo5, 1, return_value=1))
+        r = registry.Registry()
+        r.try_bind(foo1, return_value=1)
+        r.try_bind(foo2, 1, return_value=1)
+        r.try_bind(foo3, 1, 2, 3, return_value=1)
+        r.try_bind(foo4, bar="baz", return_value=1)
+        r.try_bind(foo5, 1, return_value=1)
+        self.assertRaises(registry.SignatureMismatch, r.try_bind, foo1, 1, 2)
 
     def test_try_bind__without_return_value(self):
         def foo1():
@@ -84,9 +86,11 @@ class RegistryFunctionTests(TestCase):
         def foo3(*args):
             pass
 
-        self.assertFalse(registry.try_bind(foo1, return_value=1))
-        self.assertFalse(registry.try_bind(foo2, 1, return_value=1))
-        self.assertFalse(registry.try_bind(foo3, 1, 2, 3, return_value=1))
+        r = registry.Registry()
+        r.try_bind(foo1, return_value=1)
+        r.try_bind(foo2, 1, return_value=1)
+        r.try_bind(foo3, 1, 2, 3, return_value=1)
+        self.assertRaises(registry.SignatureMismatch, r.try_bind, foo1, 1)
 
     def test_register_side_effect(self):
         def test_func1():
@@ -102,7 +106,7 @@ class RegistryFunctionTests(TestCase):
         registry.register_side_effect("foo", test_func1)
         self.assertTrue(registry._registry.contains("foo", test_func1))
 
-    @mock.patch("side_effects.registry._run_func")
+    @mock.patch.object(registry.Registry, "run_func")
     def test_run_side_effects(self, mock_func):
         def test_func1():
             pass
@@ -160,26 +164,7 @@ class RegistryFunctionTests(TestCase):
             "foo",
         )
 
-    def test__run_func__no_return_value(self):
-        """Test the _run_func function does not pass return_value if not required."""
-
-        def test_func():
-            pass
-
-        registry._run_func(test_func, return_value=None)
-
-    def test__run_func__with_return_value(self):
-        """Test the _run_func function passes through the return_value if required."""
-
-        def test_func(**kwargs):
-            assert "return_value" in kwargs
-
-        # return_value not passed through, so fails
-        registry._run_func(test_func)
-        # self.assertRaises(KeyError, registry._run_func, test_func)
-        registry._run_func(test_func, return_value=None)
-
-    def test__run_func__aborts_on_error(self):
+    def test_run_func__aborts_on_error(self):
         """Test the _run_func function handles ABORT_ON_ERROR correctly."""
 
         def test_func():
@@ -188,23 +173,12 @@ class RegistryFunctionTests(TestCase):
         # error is logged, but not raised
         with mock.patch.object(settings, "ABORT_ON_ERROR", False):
             self.assertFalse(settings.ABORT_ON_ERROR)
-            registry._run_func(test_func, return_value=None)
+            registry._registry.run_func(test_func, return_value=None)
 
         # error is raised
         with mock.patch.object(settings, "ABORT_ON_ERROR", True):
             self.assertTrue(settings.ABORT_ON_ERROR)
-            self.assertRaises(Exception, registry._run_func, test_func)
-
-    def test__run_func__signature_mismatch(self):
-        """Test the _run_func function always raises SignatureMismatch."""
-
-        def test_func():
-            raise Exception("Pah")
-
-        with mock.patch.object(settings, "ABORT_ON_ERROR", False):
-            self.assertRaises(
-                registry.SignatureMismatch, registry._run_func, test_func, 1
-            )
+            self.assertRaises(Exception, registry._registry.run_func, test_func)
 
 
 class RegistryTests(TestCase):
@@ -242,50 +216,3 @@ class RegistryTests(TestCase):
         self.assertEqual(r.by_label_contains("fo"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("food"), {})
-
-    @mock.patch("side_effects.registry._run_func")
-    def test__run_side_effects__no_return_value(self, mock_run):
-        """Test return_value is not passed"""
-
-        def no_return_value(*args, **kwargz):
-            assert "return_value" not in kwargz
-
-        r = registry.Registry()
-        r.add("foo", no_return_value)
-        r._run_side_effects("foo")
-        r._run_side_effects("foo", return_value=None)
-
-    def test__run_side_effects__with_return_value(self):
-        """Test return_value is passed"""
-        r = registry.Registry()
-
-        def has_return_value(*args, **kwargs):
-            assert "return_value" in kwargs
-
-        r.add("foo", has_return_value)
-        r._run_side_effects("foo", return_value=None)
-
-    def test_try_bind_all(self):
-        def foo1(return_value):
-            pass
-
-        def foo2(arg1, return_value):
-            pass
-
-        def foo3(*args, return_value):
-            pass
-
-        def foo4(return_value, **kwargs):
-            pass
-
-        def foo5(arg1, **kwargs):
-            pass
-
-        r = registry.Registry()
-        r.add("foo", foo1)
-        r.add("foo", foo2)
-        r.add("foo", foo3)
-        r.add("foo", foo4)
-        r.add("foo", foo5)
-        r.try_bind_all("foo", 1)
-        self.assertRaises(registry.SignatureMismatch, r.try_bind_all, "foo", 1, 2)

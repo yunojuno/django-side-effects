@@ -16,9 +16,7 @@ def http_response_check(response: HttpResponse) -> bool:
         return True
 
 
-def has_side_effects(
-    label: str, run_on_exit: Callable = http_response_check
-) -> Callable:
+def has_side_effects(label: str) -> Callable:
     """
     Run decorated function and raise side_effects signal when complete.
 
@@ -34,35 +32,20 @@ def has_side_effects(
     module in core. You can use the label to call the appropriate side
     effect function.
 
-    The run_on_exit kwarg can be used for fine-grained control over the exact
-    behaviour required. The canonical use case for this is when decorating
-    view functions - as they will typically always return a valid HttpResponse
-    object, and use the status_code property to indicate whether the view
-    function ran OK.
-
     Args:
         label: string, an identifier that is used in the receiver to determine
             which event has occurred. This is required because the function name
             won't be sufficient in most cases.
 
-    Kwargs:
-        run_on_exit: function used to determine whether the side effects should
-            run, based on the return value of the innner function. This can be
-            used to inspect the result for fine grained control. The default is
-            `http_response_check`, which will return False for 4xx, 5xx status
-            codes.
-
     """
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             """Run the original function and send the signal if successful."""
             return_value = func(*args, **kwargs)
-            if run_on_exit(return_value):
-                registry.run_side_effects(
-                    label, *args, return_value=return_value, **kwargs
-                )
+            kwargs["return_value"] = return_value
+            registry.run_side_effects(label, *args, **kwargs)
             return return_value
 
         return inner_func
@@ -77,7 +60,7 @@ def is_side_effect_of(label: str) -> Callable:
         registry.register_side_effect(label, func)
 
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             return func(*args, **kwargs)
 
         return inner_func
@@ -90,7 +73,7 @@ def disable_side_effects() -> Callable:
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def inner_func(*args: Any, **kwargs: Any) -> Any:
+        def inner_func(*args: object, **kwargs: object) -> Any:
             with registry.disable_side_effects() as events:
                 return func(*args, events, **kwargs)
 

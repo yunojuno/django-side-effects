@@ -105,17 +105,7 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
-    def _run_side_effects(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        if settings.TEST_MODE_FAIL:
-            raise SideEffectsTestFailure(label)
-        for func in self[label]:
-            _run_func(func, *args, return_value=return_value, **kwargs)
-
-    def run_side_effects(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
+    def run_side_effects(self, label: str, *args: object, **kwargs: object) -> None:
         """
         Run registered side-effects functions, or suppress as appropriate.
 
@@ -124,33 +114,36 @@ class Registry(defaultdict):
         primarily used by the disable_side_effects context manager to register
         which side-effects events were suppressed (for testing purposes).
 
-        NB even if the side-effects themselves are not run, this method will try
-        to bind all of the receiver functions - this is to ensure that incompatible
-        functions fail hard and early.
-
         """
-        # TODO: this is all becoming over-complex - need to simplify this
-        self.try_bind_all(label, *args, return_value=return_value, **kwargs)
         if self._suppress or settings.TEST_MODE:
             self.suppressed_side_effect.send(Registry, label=label)
-        else:
-            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-    def try_bind_all(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        """
-        Test all receivers for signature compatibility.
-
-        Raise SignatureMismatch if any function does not match.
-
-        """
+            return
+        if settings.TEST_MODE_FAIL:
+            raise SideEffectsTestFailure(label)
         for func in self[label]:
-            if not (
-                try_bind(func, *args, return_value=return_value, **kwargs)
-                or try_bind(func, *args, **kwargs)
-            ):
-                raise SignatureMismatch(func)
+            self.try_bind(func, *args, **kwargs)
+            self.run_func(func, *args, **kwargs)
+
+    def run_func(self, func: Callable, *args: object, **kwargs: object) -> None:
+        try:
+            func(*args, **kwargs)
+        except Exception:  # noqa: B902
+            logger.exception("Error running side_effect function '%s'", fname(func))
+            if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
+                raise
+
+    def try_bind(self, func: Callable, *args: object, **kwargs: object) -> None:
+        """Try binding args & kwargs to a given func."""
+        try:
+            inspect.signature(func).bind(*args, **kwargs)
+        except TypeError:
+            # if the func isn't expecting return_value (which we have added
+            # to the kwargs in the has_side_effects decorator), then try
+            # again without it.
+            if "return_value" in kwargs:
+                kwargs.pop("return_value", None)
+                return self.try_bind(func, *args, **kwargs)
+            raise SignatureMismatch(func)
 
 
 class disable_side_effects:
@@ -189,9 +182,7 @@ def register_side_effect(label: str, func: Callable) -> None:
     _registry.add(label, func)
 
 
-def run_side_effects(
-    label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-) -> None:
+def run_side_effects(label: str, *args: object, **kwargs: object) -> None:
     """Run all of the side-effect functions registered for a label."""
     if not transaction.get_autocommit():
         getattr(logger, settings.ATOMIC_TX_LOG_LEVEL)(
@@ -199,38 +190,7 @@ def run_side_effects(
             "transaction. This may have unintended consequences.",
             label,
         )
-    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-
-def _run_func(
-    func: Callable, *args: Any, return_value: Any | None = None, **kwargs: Any
-) -> None:
-    """Run a single side-effect function and handle errors."""
-    try:
-        if try_bind(func, *args, return_value=return_value, **kwargs):
-            func(*args, return_value=return_value, **kwargs)
-        elif try_bind(func, *args, **kwargs):
-            func(*args, **kwargs)
-        else:
-            raise SignatureMismatch(func)
-    except SignatureMismatch:
-        # always re-raise SignatureMismatch as this means we have been unable
-        # to run the side-effect function at all.
-        raise
-    except Exception:  # noqa: B902
-        logger.exception("Error running side_effect function '%s'", fname(func))
-        if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
-            raise
-
-
-def try_bind(func: Callable, *args: Any, **kwargs: Any) -> bool:
-    """Try binding args & kwargs to a given func."""
-    try:
-        inspect.signature(func).bind(*args, **kwargs)
-    except TypeError:
-        return False
-    else:
-        return True
+    _registry.run_side_effects(label, *args, **kwargs)
 
 
 # global registry
