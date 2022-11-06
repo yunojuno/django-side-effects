@@ -38,19 +38,6 @@ class DecoratorTests(TestCase):
         func(1)
         mock_registry.run_side_effects.assert_called_with("foo", 1, return_value=2)
 
-    @mock.patch("side_effects.decorators.registry")
-    def test_has_side_effects__run_on_exit_false(self, mock_registry):
-        """Decorated functions should call run_side_effects."""
-
-        def test_func(*args, **kwargs):
-            pass
-
-        func = decorators.has_side_effects("foo", run_on_exit=lambda r: False)(
-            test_func
-        )
-        func("bar")
-        mock_registry.run_side_effects.assert_not_called()
-
     @mock.patch("side_effects.registry.register_side_effect")
     def test_is_side_effect_of(self, mock_register):
         """Decorated functions should be added to the registry."""
