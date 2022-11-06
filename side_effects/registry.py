@@ -69,7 +69,7 @@ class Registry(defaultdict):
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._suppress = False
-        super(Registry, self).__init__(list)
+        super().__init__(list)
 
     def by_label(self, value: str) -> RegistryType:
         """Filter registry by label (exact match)."""

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, List
+from typing import Any, Callable, List
 
 from django.apps import AppConfig
 from django.core.checks import messages, register
@@ -24,7 +24,16 @@ def _message(label: str) -> messages.CheckMessage:
 
 def signature_count(label: str) -> int:
     """Return number of unique function signatures for an event."""
-    signatures = [inspect.signature(func) for func in registry._registry[label]]
+
+    def trim_signature(func: Callable) -> inspect.Signature:
+        # Return a Signature for the func that ignores return_value kwarg
+        sig = inspect.signature(func)
+        # remove return_value from the signature params as it's dynamic
+        # and may/ may not exist depending on the usage.
+        params = [sig.parameters[p] for p in sig.parameters if p != "return_value"]
+        return sig.replace(parameters=params, return_annotation=sig.return_annotation)
+
+    signatures = [trim_signature(func) for func in registry._registry[label]]
     return len(set(signatures))
 
 
