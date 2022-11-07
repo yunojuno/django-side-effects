@@ -61,7 +61,7 @@ def has_side_effects(
             return_value = func(*args, **kwargs)
             # if the exit test fails we go no further
             if not run_on_exit(return_value):
-                return
+                return return_value
 
             registry.run_side_effects_on_commit(
                 label,
@@ -69,6 +69,7 @@ def has_side_effects(
                 return_value=return_value,
                 **kwargs,
             )
+            return return_value
 
         return inner_func
 

@@ -37,7 +37,7 @@ class DecoratorTests(TestCase):
             return arg1 * 2
 
         func = decorators.has_side_effects("foo")(test_func)
-        func(1)
+        self.assertEqual(func(1), 2)
         mock_registry.run_side_effects_on_commit.assert_called_with(
             "foo", 1, return_value=2
         )
