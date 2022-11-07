@@ -59,16 +59,13 @@ def has_side_effects(
         def inner_func(*args: Any, **kwargs: Any) -> Any:
             """Run the original function and send the signal if successful."""
             return_value = func(*args, **kwargs)
+
             # if the exit test fails we go no further
             if not run_on_exit(return_value):
                 return
 
-            registry.run_side_effects_on_commit(
-                label,
-                *args,
-                return_value=return_value,
-                **kwargs,
-            )
+            kwargs["return_value"] = return_value
+            registry.run_side_effects_on_commit(label, *args, **kwargs)
 
         return inner_func
 
