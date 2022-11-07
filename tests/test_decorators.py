@@ -1,10 +1,12 @@
 from unittest import mock
 
 import pytest
+from django.db import transaction
 from django.test import TestCase
 
 from side_effects import decorators, registry
 from side_effects.decorators import has_side_effects
+from side_effects.registry import disable_side_effects
 
 
 class DecoratorTests(TestCase):
@@ -36,7 +38,9 @@ class DecoratorTests(TestCase):
 
         func = decorators.has_side_effects("foo")(test_func)
         func(1)
-        mock_registry.run_side_effects.assert_called_with("foo", 1, return_value=2)
+        mock_registry.run_side_effects_on_commit.assert_called_with(
+            "foo", 1, return_value=2
+        )
 
     @mock.patch("side_effects.decorators.registry")
     def test_has_side_effects__run_on_exit_false(self, mock_registry):
@@ -91,6 +95,88 @@ class DecoratorTests(TestCase):
             foo()
 
         assert mock_registry.run_side_effects.call_count == 0
+
+    def test_transaction_on_commit(self):
+        """Test the transaction awareness of the decorator."""
+
+        @has_side_effects("foo")
+        @transaction.atomic
+        def inner_func() -> None:
+            conn = transaction.get_connection()
+            assert conn.in_atomic_block
+
+        # calling inner_func directly will trigger has_side_effects, which
+        # will defer the run_side_effects_on_commit call by passing it to
+        # the transaction.on_commit function.
+        with TestCase.captureOnCommitCallbacks() as callbacks:
+            inner_func()
+        assert len(callbacks) == 1
+        assert callbacks[0].func == registry._registry.run_side_effects
+        assert callbacks[0].args == ("foo",)
+        assert callbacks[0].keywords == {"return_value": None}
+
+
+@pytest.mark.django_db(transaction=True)
+class TestDecoratorTransactions:
+    """
+    Test the commit / rollback scenarios that impact side-effects.
+
+    When using the has_side_effects decorator on a function, the
+    side-effects should only fire if the transaction within which the
+    decorated function is operating is committed. If the source
+    (decorated) function completes, but the calling function (outside
+    the decorated function) fails, then the transaction is aborted and
+    the side-effects should *not* fire.
+
+    This test class is deliberately not parametrized as readability
+    trumps efficiency in this case. This is a hard one to follow.
+
+    """
+
+    @has_side_effects("foo")
+    @transaction.atomic
+    def inner_commit(self) -> None:
+        """Run the side-effects as expected."""
+        assert transaction.get_connection().in_atomic_block
+
+    @has_side_effects("foo")
+    @transaction.atomic
+    def inner_rollback(self) -> None:
+        """Rollback the source (inner) function - side-effects should *not* fire."""
+        raise Exception("Rolling back inner transaction")
+
+    @transaction.atomic
+    def outer_commit(self) -> None:
+        """Commit the outer function - side-effects should fire."""
+        self.inner_commit()
+
+    @transaction.atomic
+    def outer_rollback(self) -> None:
+        """Rollback outer function - side-effects should *not* fire."""
+        self.inner_commit()
+        raise Exception("Rolling back outer transaction")
+
+    def test_inner_func_commit(self) -> None:
+        with disable_side_effects() as events:
+            self.inner_commit()
+        assert events == ["foo"]
+
+    def test_outer_func_commit(self) -> None:
+        with disable_side_effects() as events:
+            self.outer_commit()
+        assert events == ["foo"]
+
+    def test_inner_func_rollback(self) -> None:
+        with disable_side_effects() as events:
+            with pytest.raises(Exception):
+                self.inner_rollback()
+        assert events == []
+
+    def test_outer_func_rollback(self) -> None:
+        with disable_side_effects() as events:
+            with pytest.raises(Exception):
+                self.outer_rollback()
+        assert events == []
 
 
 class ContextManagerTests(TestCase):

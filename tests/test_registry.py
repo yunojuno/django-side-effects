@@ -1,6 +1,5 @@
 from unittest import mock
 
-from django.db import transaction
 from django.test import TestCase
 
 from side_effects import registry, settings
@@ -139,25 +138,6 @@ class RegistryFunctionTests(TestCase):
         registry.register_side_effect("foo", test_func)
         self.assertRaises(
             registry.SideEffectsTestFailure, registry.run_side_effects, "foo"
-        )
-
-    @mock.patch("side_effects.registry.settings.ATOMIC_TX_LOG_LEVEL", "warning")
-    @mock.patch("side_effects.registry.logger")
-    def test_run_side_effects__inside_atomic(self, mock_logger):
-        def test_func():
-            pass
-
-        registry.register_side_effect("foo", test_func)
-
-        # TestCase methods are transactional by default, so this should
-        # always be false - i.e. we are inside a transaction.atomic
-        # scope, and so should be logging a warning.
-        assert transaction.get_autocommit() is False
-        registry.run_side_effects("foo")
-        mock_logger.warning.assert_called_once_with(
-            "Side-effects [%s] are being run within the scope of an atomic "
-            "transaction. This may have unintended consequences.",
-            "foo",
         )
 
     def test__run_func__no_return_value(self):

@@ -23,11 +23,3 @@ TEST_MODE: bool = get_setting("SIDE_EFFECTS_TEST_MODE", False)
 # they shouldn't be.
 # Default = False
 TEST_MODE_FAIL: bool = get_setting("SIDE_EFFECTS_TEST_MODE_FAIL", False)
-
-# Controls the log level to use when warning if side-effects are running
-# inside an atomic transaction. This is not typically the desired
-# behaviour, as it can lead to a failure scenarios in which an exception
-# in an outer function (outside of run_side_effects) causes a tx
-# rollback when the side-effect itself cannot be reverted (e.g. sending
-# email), leaving system in an inconsistent state.
-ATOMIC_TX_LOG_LEVEL: str = get_setting("SIDE_EFFECTS_ATOMIC_TX_LOG_LEVEL", "debug")
