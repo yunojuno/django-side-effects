@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-side-effects"
-version = "2.0"
+version = "2.0.b2"
 description = "Django app for managing external side effects."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]
