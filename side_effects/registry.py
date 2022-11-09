@@ -72,6 +72,10 @@ class Registry(defaultdict):
         self._suppress = False
         super().__init__(list)
 
+    @property
+    def is_suppressed(self) -> bool:
+        return self._suppress or settings.TEST_MODE
+
     def by_label(self, value: str) -> RegistryType:
         """Filter registry by label (exact match)."""
         return {k: v for k, v in self.items() if k == value}
@@ -106,6 +110,12 @@ class Registry(defaultdict):
         with self._lock:
             self[label].append(func)
 
+    def disable(self) -> None:
+        self._suppress = True
+
+    def enable(self) -> None:
+        self._suppress = False
+
     def _run_side_effects(
         self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
@@ -132,7 +142,7 @@ class Registry(defaultdict):
         """
         # TODO: this is all becoming over-complex - need to simplify this
         self.try_bind_all(label, *args, return_value=return_value, **kwargs)
-        if self._suppress or settings.TEST_MODE:
+        if self.is_suppressed:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
             self._run_side_effects(label, *args, return_value=return_value, **kwargs)
@@ -172,12 +182,12 @@ class disable_side_effects:
 
     def __enter__(self) -> list[str]:
         _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
-        _registry._suppress = True
+        _registry.disable()
         return self.events
 
     def __exit__(self, *args: Any) -> None:
-        _registry._suppress = False
         _registry.suppressed_side_effect.disconnect(self.on_event)
+        _registry.enable()
 
     def on_event(self, sender: Callable, **kwargs: Any) -> None:
         self.events.append(kwargs["label"])
