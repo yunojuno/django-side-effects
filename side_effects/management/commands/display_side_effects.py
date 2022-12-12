@@ -3,11 +3,31 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from typing import Any, List
+from typing import Any, Callable, List
 
 from django.core.management.base import BaseCommand
 
 from side_effects.registry import RegistryType, _registry, docstring, fname
+
+
+def sort_events(
+    events: RegistryType,
+    handler_sort_key: Callable[[Callable], Any],
+) -> RegistryType:
+    """
+    Sort an events registry dict by side effect label and handler value.
+
+    Use the ``handler_sort_key`` parameter to determine how handler values
+    are sorted.
+    """
+    side_effects_sorted_by_label = sorted(
+        events.items(),
+        key=lambda label_and_handlers: label_and_handlers[0],
+    )
+    return {
+        label: sorted(handlers, key=handler_sort_key)
+        for label, handlers in side_effects_sorted_by_label
+    }
 
 
 class Command(BaseCommand):
@@ -51,6 +71,13 @@ class Command(BaseCommand):
             dest="label-contains",
             help="Filter side-effects on event labels containing the supplied value.",
         )
+        parser.add_argument(
+            "--sorted",
+            action="store_true",
+            default=False,
+            dest="sorted",
+            help="Sort the output by label and handler.",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         if options["label"]:
@@ -66,6 +93,14 @@ class Command(BaseCommand):
         else:
             self.stdout.write("\nRegistered side-effects:")
             events = _registry
+
+        if options["sorted"]:
+            events = sort_events(
+                events,
+                handler_sort_key=(
+                    fname if options["raw"] or options["verbose"] else docstring
+                ),
+            )
 
         if options["raw"]:
             self.print_raw(events)
