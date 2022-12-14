@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Any
 from unittest import mock
 
 from django.test import TestCase
@@ -146,7 +149,8 @@ class RegistryFunctionTests(TestCase):
         def test_func():
             pass
 
-        registry._run_func(test_func, return_value=None)
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+        registry._run_func(test_func, meta=meta)
 
     def test__run_func__with_return_value(self):
         """Test the _run_func function passes through the return_value if required."""
@@ -154,10 +158,8 @@ class RegistryFunctionTests(TestCase):
         def test_func(**kwargs):
             assert "return_value" in kwargs
 
-        # return_value not passed through, so fails
-        registry._run_func(test_func)
-        # self.assertRaises(KeyError, registry._run_func, test_func)
-        registry._run_func(test_func, return_value=None)
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+        registry._run_func(test_func, meta=meta)
 
     def test__run_func__aborts_on_error(self):
         """Test the _run_func function handles ABORT_ON_ERROR correctly."""
@@ -165,15 +167,17 @@ class RegistryFunctionTests(TestCase):
         def test_func():
             raise Exception("Pah")
 
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+
         # error is logged, but not raised
         with mock.patch.object(settings, "ABORT_ON_ERROR", False):
             self.assertFalse(settings.ABORT_ON_ERROR)
-            registry._run_func(test_func, return_value=None)
+            registry._run_func(test_func, meta=meta)
 
         # error is raised
         with mock.patch.object(settings, "ABORT_ON_ERROR", True):
             self.assertTrue(settings.ABORT_ON_ERROR)
-            self.assertRaises(Exception, registry._run_func, test_func)
+            self.assertRaises(Exception, registry._run_func, test_func, meta=meta)
 
     def test__run_func__signature_mismatch(self):
         """Test the _run_func function always raises SignatureMismatch."""
@@ -181,9 +185,14 @@ class RegistryFunctionTests(TestCase):
         def test_func():
             raise Exception("Pah")
 
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
         with mock.patch.object(settings, "ABORT_ON_ERROR", False):
             self.assertRaises(
-                registry.SignatureMismatch, registry._run_func, test_func, 1
+                registry.SignatureMismatch,
+                registry._run_func,
+                test_func,
+                1,
+                meta=meta,
             )
 
 
@@ -223,27 +232,63 @@ class RegistryTests(TestCase):
         self.assertEqual(r.by_label_contains("foo"), {"foo": [test_func]})
         self.assertEqual(r.by_label_contains("food"), {})
 
-    @mock.patch("side_effects.registry._run_func")
-    def test__run_side_effects__no_return_value(self, mock_run):
-        """Test return_value is not passed"""
-
-        def no_return_value(*args, **kwargz):
-            assert "return_value" not in kwargz
-
+    def test__run_side_effects__with_side_effect_meta(self) -> None:
+        """Test the meta object is passed if the function requires it explictly."""
+        actual_call_a = mock.Mock()
+        actual_call_b = mock.Mock()
+        actual_call_c = mock.Mock()
         r = registry.Registry()
-        r.add("foo", no_return_value)
-        r._run_side_effects("foo")
-        r._run_side_effects("foo", return_value=None)
+
+        def handler_a(*, side_effect_meta: registry.SideEffectMeta) -> None:
+            actual_call_a(side_effect_meta=side_effect_meta)
+
+        def handler_b(*args: Any, side_effect_meta: registry.SideEffectMeta) -> None:
+            actual_call_b(*args, side_effect_meta=side_effect_meta)
+
+        def handler_c(
+            *, side_effect_meta: registry.SideEffectMeta, **kwargs: Any
+        ) -> None:
+            actual_call_c(side_effect_meta=side_effect_meta, **kwargs)
+
+        r.add("a", handler_a)
+        r.add("b", handler_b)
+        r.add("c", handler_c)
+
+        meta_a = registry.SideEffectMeta(label="a", return_value=None)
+        r._run_side_effects(meta=meta_a)
+        actual_call_a.assert_called_once_with(side_effect_meta=meta_a)
+
+        meta_b = registry.SideEffectMeta(label="b", return_value=None)
+        r._run_side_effects(1, 2, 3, meta=meta_b)
+        actual_call_b.assert_called_once_with(1, 2, 3, side_effect_meta=meta_b)
+
+        meta_c = registry.SideEffectMeta(label="c", return_value=None)
+        r._run_side_effects(meta=meta_c, x=1, y=2)
+        actual_call_c.assert_called_once_with(side_effect_meta=meta_c, x=1, y=2)
+
+    def test__run_side_effects__side_effect_meta_must_be_keyword_only(self) -> None:
+        """Test that the meta object is not passed if not a keyword-only param."""
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+        r = registry.Registry()
+
+        def handler(side_effect_meta: registry.SideEffectMeta, *args, **kwargs: Any) -> None:
+            pass
+
+        r.add(meta.label, handler)
+        self.assertRaises(registry.SignatureMismatch, r._run_side_effects, meta=meta)
 
     def test__run_side_effects__with_return_value(self):
-        """Test return_value is passed"""
+        """Test return_value is passed if the function has **kwargs."""
+        actual_call = mock.Mock()
         r = registry.Registry()
 
         def has_return_value(*args, **kwargs):
-            assert "return_value" in kwargs
+            actual_call(*args, **kwargs)
 
         r.add("foo", has_return_value)
-        r._run_side_effects("foo", return_value=None)
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+        r._run_side_effects(meta=meta)
+        actual_call.assert_called_once_with(return_value=None)
 
     def test_try_bind_all(self):
         def foo1(return_value):
@@ -267,5 +312,8 @@ class RegistryTests(TestCase):
         r.add("foo", foo3)
         r.add("foo", foo4)
         r.add("foo", foo5)
-        r.try_bind_all("foo", 1)
-        self.assertRaises(registry.SignatureMismatch, r.try_bind_all, "foo", 1, 2)
+        meta = registry.SideEffectMeta(label="foo", return_value=None)
+        r.try_bind_all(1, meta=meta)
+        self.assertRaises(
+            registry.SignatureMismatch, r.try_bind_all, 1, 2, meta=meta
+        )

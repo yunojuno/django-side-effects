@@ -30,11 +30,15 @@ def signature_count(label: str) -> int:
         sig = inspect.signature(func)
         # remove return_value from the signature params as it's dynamic
         # and may/ may not exist depending on the usage.
-        params = [sig.parameters[p] for p in sig.parameters if p != "return_value"]
+        params = [
+            param
+            for param_name, param in sig.parameters.items()
+            if param_name not in ("return_value", "side_effect_meta")
+        ]
         return sig.replace(parameters=params, return_annotation=sig.return_annotation)
 
-    signatures = [trim_signature(func) for func in registry._registry[label]]
-    return len(set(signatures))
+    signatures = {trim_signature(func) for func in registry._registry[label]}
+    return len(signatures)
 
 
 @register()
