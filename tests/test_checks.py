@@ -1,7 +1,8 @@
+from __future__ import annotations
 from django.test import TestCase
 
 from side_effects import checks, registry
-
+from .fixtures.checks_fixtures import Goo, gar
 
 class SystemCheckTests(TestCase):
     def test_multiple_functions(self):
@@ -23,3 +24,15 @@ class SystemCheckTests(TestCase):
         errors = checks.check_function_signatures(None)
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].id, checks.CHECK_ID_MULTIPLE_SIGNATURES)
+
+    def test_similar_functions(self):
+        def foo(arg1: Goo):
+            pass
+
+        registry._registry.clear()
+        registry.register_side_effect("test", foo)
+        registry.register_side_effect("test", gar)
+
+        errors = checks.check_function_signatures(None)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].id, checks.CHECK_ID_NO_ANNOTATIONS)
