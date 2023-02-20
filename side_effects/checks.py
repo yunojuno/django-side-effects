@@ -25,6 +25,7 @@ def _message(label: str) -> messages.CheckMessage:
     )
     return messages.Warning(msg, hint=hint, id=CHECK_ID_MULTIPLE_SIGNATURES)
 
+
 def _message_annotations(label: str) -> messages.CheckMessage:
     """
     Message printed if file missing __future__.annotations.
@@ -35,7 +36,7 @@ def _message_annotations(label: str) -> messages.CheckMessage:
     hint = (
         f"Ensure that all files with functions decorated "
         f'`@is_side_effect_of("{label}")` import'
-        f'`from __future__ import annotations`.'
+        f"`from __future__ import annotations`."
     )
     return messages.Warning(msg, hint=hint, id=CHECK_ID_NO_ANNOTATIONS)
 
@@ -48,7 +49,8 @@ def trim_signature(func: Callable) -> inspect.Signature:
     params = [sig.parameters[p] for p in sig.parameters if p != "return_value"]
     return sig.replace(parameters=params, return_annotation=sig.return_annotation)
 
-def has_class_annotations(functions: List[Callable]) -> bool:
+
+def has_class_annotations(functions: list[Callable]) -> bool:
     """
     Check if functions have class annotations.
     If any function annotations are not in string format, this will return `True`.
@@ -59,6 +61,7 @@ def has_class_annotations(functions: List[Callable]) -> bool:
             if not annotation in [str, None]:
                 return True
     return False
+
 
 def find_fixes(label: str) -> messages.CheckMessage | None:
     """
@@ -72,10 +75,11 @@ def find_fixes(label: str) -> messages.CheckMessage | None:
         else:
             return _message(label)
 
+
 @register()
 def check_function_signatures(app_configs: list[AppConfig], **kwargs: Any) -> list[str]:
     """Check that all registered functions have the same signature."""
-    errors: List[str] = []
+    errors: list[str] = []
     for label in REGISTRY:
         if error := find_fixes(label):
             errors.append(error)
