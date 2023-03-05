@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 from django.apps import AppConfig
 from django.core.checks import messages, register
@@ -17,7 +17,8 @@ def _message(label: str) -> messages.CheckMessage:
     """
     Message printed if varying function signatures for same event.
 
-    Create Error or Warning message based on STRICT_MODE."""
+    Create Error or Warning message based on STRICT_MODE.
+    """
     msg = f'Multiple function signatures for event: "{label}"'
     hint = (
         f"Ensure that all functions decorated "
@@ -53,24 +54,28 @@ def trim_signature(func: Callable) -> inspect.Signature:
 def has_class_annotations(functions: list[Callable]) -> bool:
     """
     Check if functions have class annotations.
+
     If any function annotations are not in string format, this will return `True`.
     """
+    # inspect.get_annotations is only available in python versions > 3.7. If it doesn't
+    # exist we return the broader error (CHECK_ID_MULTIPLE_SIGNATURES)
+    if not hasattr(inspect, "get_annotations"):
+        return False
     for func in functions:
         func_annotations = list(inspect.get_annotations(func).values())
         for annotation in func_annotations:
-            if not annotation in [str, None]:
+            if annotation not in [str, None]:
                 return True
     return False
 
 
 def find_fixes(label: str) -> messages.CheckMessage | None:
-    """
-    Check for similar function signatures, and returns a fix if found.
-    """
+    """Check for similar function signatures, and returns a fix if found."""
     functions = [func for func in registry._registry[label]]
     signatures = [trim_signature(func) for func in functions]
     if len(set(signatures)) > 1:
-        if has_class_annotations(functions):
+
+        if has_class_annotations(functions) and annotations:
             return _message_annotations(label)
         else:
             return _message(label)
