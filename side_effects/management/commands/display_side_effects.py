@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 from django.core.management.base import BaseCommand
 
@@ -31,11 +31,10 @@ def sort_events(
 
 
 class Command(BaseCommand):
-
     help = "Displays project side_effects."
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.missing_docstrings: List[str] = []
+        self.missing_docstrings: list[str] = []
         super().__init__(*args, **kwargs)
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
