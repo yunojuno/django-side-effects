@@ -74,11 +74,11 @@ def find_fixes(label: str) -> messages.CheckMessage | None:
     functions = [func for func in registry._registry[label]]
     signatures = [trim_signature(func) for func in functions]
     if len(set(signatures)) > 1:
-
         if has_class_annotations(functions) and annotations:
             return _message_annotations(label)
         else:
             return _message(label)
+    return None
 
 
 @register()
