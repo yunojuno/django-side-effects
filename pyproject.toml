@@ -5,7 +5,7 @@ description = "Django app for managing external side effects."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]
 maintainers = ["YunoJuno <code@yunojuno.com>"]
-readme = "README.rst"
+readme = "README.md"
 homepage = "https://github.com/yunojuno/django-side-effects"
 repository = "https://github.com/yunojuno/django-side-effects"
 classifiers = [
@@ -32,7 +32,6 @@ django = "^3.2 || ^4.0 || ^5.0 "
 [tool.poetry.dev-dependencies]
 black = "*"
 coverage = "*"
-freezegun = "*"
 mypy = "*"
 pre-commit = "*"
 pytest = "*"
