@@ -31,8 +31,7 @@ def sort_events(
 
 
 class Command(BaseCommand):
-
-    help = "Displays project side_effects."
+    help = "Displays project side_effects."  # noqa: A003
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.missing_docstrings: List[str] = []
@@ -160,7 +159,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write("\nAll registered functions have docstrings")
 
-    def exit(self) -> None:
+    def exit(self) -> None:  # noqa: A003
         """
         Exit based on whether there are any missing docstrings.
 

@@ -31,6 +31,7 @@ class DecoratorTests(TestCase):
     @mock.patch("side_effects.decorators.registry")
     def test_has_side_effects(self, mock_registry):
         """Decorated functions should call run_side_effects."""
+
         # call the decorator directly - then call the decorated function
         # as the action takes places post-function call.
         def test_func(arg1: int):
@@ -71,7 +72,6 @@ class DecoratorTests(TestCase):
 
     @decorators.disable_side_effects()
     def test_disable_side_effects(self, events):
-
         # simple func that calls the side-effect 'foo'
         def test_func():
             registry.run_side_effects("foo")

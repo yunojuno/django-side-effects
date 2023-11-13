@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-side-effects"
-version = "2.0.b4"
+version = "2.0"
 description = "Django app for managing external side effects."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]
@@ -13,35 +13,32 @@ classifiers = [
     "Framework :: Django :: 3.2",
     "Framework :: Django :: 4.0",
     "Framework :: Django :: 4.1",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 packages = [{ include = "side_effects" }]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-django = "^3.2 || ^4.0"
+django = "^3.2 || ^4.0 || ^5.0 "
 
 [tool.poetry.dev-dependencies]
-black = {version = "*", allow-prereleases = true}
+black = "*"
 coverage = "*"
-flake8 = "*"
-flake8-bandit = "*"
-flake8-blind-except = "*"
-flake8-docstrings = "*"
-flake8-logging-format = "*"
-flake8-print = "*"
 freezegun = "*"
-isort = "*"
 mypy = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-django = "*"
+ruff = "*"
 tox = "*"
 
 [build-system]
