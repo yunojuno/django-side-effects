@@ -5,8 +5,9 @@ import inspect
 import logging
 import threading
 from collections import defaultdict
+from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, Generic, List, TypeVar
 
 from django.db import transaction
 from django.dispatch import Signal
@@ -44,6 +45,23 @@ class SignatureMismatch(Exception):
         )
 
     pass
+
+
+ReturnValue = TypeVar("ReturnValue")
+
+
+@dataclass
+class SideEffectMeta(Generic[ReturnValue]):
+    """
+    Metadata available to all side effect handlers.
+
+    Whenever a side effect is triggered, a `SideEffectMeta` object is created with the
+    side effect label and the return value of the triggering function. To access it in a
+    handler, add a keyword-only parameter called `side_effect_meta`.
+    """
+
+    label: str
+    return_value: ReturnValue
 
 
 class Registry(defaultdict):
@@ -117,12 +135,12 @@ class Registry(defaultdict):
         self._suppress = False
 
     def _run_side_effects(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
+        self, *args: Any, meta: SideEffectMeta, **kwargs: Any
     ) -> None:
         if settings.TEST_MODE_FAIL:
-            raise SideEffectsTestFailure(label)
-        for func in self[label]:
-            _run_func(func, *args, return_value=return_value, **kwargs)
+            raise SideEffectsTestFailure(meta.label)
+        for func in self[meta.label]:
+            _run_func(func, *args, meta=meta, **kwargs)
 
     def run_side_effects(
         self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
@@ -140,15 +158,19 @@ class Registry(defaultdict):
         functions fail hard and early.
 
         """
+        meta = SideEffectMeta(label=label, return_value=return_value)
         # TODO: this is all becoming over-complex - need to simplify this
-        self.try_bind_all(label, *args, return_value=return_value, **kwargs)
+        self.try_bind_all(*args, meta=meta, **kwargs)
         if self.is_suppressed:
             self.suppressed_side_effect.send(Registry, label=label)
         else:
-            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
+            self._run_side_effects(*args, meta=meta, **kwargs)
 
     def try_bind_all(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
+        self,
+        *args: Any,
+        meta: SideEffectMeta,
+        **kwargs: Any,
     ) -> None:
         """
         Test all receivers for signature compatibility.
@@ -156,9 +178,10 @@ class Registry(defaultdict):
         Raise SignatureMismatch if any function does not match.
 
         """
-        for func in self[label]:
+        for func in self[meta.label]:
             if not (
-                try_bind(func, *args, return_value=return_value, **kwargs)
+                try_bind(func, *args, side_effect_meta=meta, **kwargs)
+                or try_bind(func, *args, return_value=meta.return_value, **kwargs)
                 or try_bind(func, *args, **kwargs)
             ):
                 raise SignatureMismatch(func)
@@ -222,13 +245,20 @@ def run_side_effects_on_commit(
     )
 
 
-def _run_func(
-    func: Callable, *args: Any, return_value: Any | None = None, **kwargs: Any
-) -> None:
+def _run_func(func: Callable, *args: Any, meta: SideEffectMeta, **kwargs: Any) -> None:
     """Run a single side-effect function and handle errors."""
     try:
-        if try_bind(func, *args, return_value=return_value, **kwargs):
-            func(*args, return_value=return_value, **kwargs)
+        # The current return_value logic will pass a return_value to any function
+        # accepting arbitrary kwargs. Therefore the side_effect_meta check must come
+        # first. Further, we can't assume that a handler accepting arbitrary **kwargs
+        # will not expect them to include the return_value. Instead, insist on an
+        # explicit side_effect_meta parameter; and require it to be keyword-only to
+        # avoid parameter ordering issues.
+        meta_param = inspect.signature(func).parameters.get("side_effect_meta")
+        if meta_param is not None and meta_param.kind == meta_param.KEYWORD_ONLY:
+            func(*args, side_effect_meta=meta, **kwargs)
+        elif try_bind(func, *args, return_value=meta.return_value, **kwargs):
+            func(*args, return_value=meta.return_value, **kwargs)
         elif try_bind(func, *args, **kwargs):
             func(*args, **kwargs)
         else:
