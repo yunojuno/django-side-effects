@@ -9,9 +9,9 @@ from functools import partial
 from typing import Any, Callable, Dict, List
 
 from django.db import transaction
-from django.dispatch import Signal
 
 from . import settings
+from .signals import suppressed_side_effect
 
 RegistryType = Dict[str, List[Callable]]
 logger = logging.getLogger(__name__)
@@ -60,12 +60,6 @@ class Registry(defaultdict):
     a label.
 
     """
-
-    # if using the disable_side_effects context manager or decorator,
-    # then this signal is used to communicate details of events that
-    # would have fired, but have been suppressed.
-    # RemovedInDjango40Warning: providing_args=["label"]
-    suppressed_side_effect = Signal()
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -116,52 +110,14 @@ class Registry(defaultdict):
     def enable(self) -> None:
         self._suppress = False
 
-    def _run_side_effects(
+    def run_side_effects(
         self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
+        """Run all registered side-effects functions."""
         if settings.TEST_MODE_FAIL:
             raise SideEffectsTestFailure(label)
         for func in self[label]:
             _run_func(func, *args, return_value=return_value, **kwargs)
-
-    def run_side_effects(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        """
-        Run registered side-effects functions, or suppress as appropriate.
-
-        If TEST_MODE is on, or the _suppress attr is True, then the side-effects
-        are not run, but the `suppressed_side_effect` signal is sent - this is
-        primarily used by the disable_side_effects context manager to register
-        which side-effects events were suppressed (for testing purposes).
-
-        NB even if the side-effects themselves are not run, this method will try
-        to bind all of the receiver functions - this is to ensure that incompatible
-        functions fail hard and early.
-
-        """
-        # TODO: this is all becoming over-complex - need to simplify this
-        self.try_bind_all(label, *args, return_value=return_value, **kwargs)
-        if self.is_suppressed:
-            self.suppressed_side_effect.send(Registry, label=label)
-        else:
-            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-    def try_bind_all(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        """
-        Test all receivers for signature compatibility.
-
-        Raise SignatureMismatch if any function does not match.
-
-        """
-        for func in self[label]:
-            if not (
-                try_bind(func, *args, return_value=return_value, **kwargs)
-                or try_bind(func, *args, **kwargs)
-            ):
-                raise SignatureMismatch(func)
 
 
 class disable_side_effects:
@@ -178,15 +134,14 @@ class disable_side_effects:
 
     def __init__(self) -> None:
         self.events = []  # type: List[str]
-        pass
 
     def __enter__(self) -> list[str]:
-        _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
+        suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
         _registry.disable()
         return self.events
 
     def __exit__(self, *args: Any) -> None:
-        _registry.suppressed_side_effect.disconnect(self.on_event)
+        suppressed_side_effect.disconnect(self.on_event)
         _registry.enable()
 
     def on_event(self, sender: Callable, **kwargs: Any) -> None:
@@ -204,22 +159,20 @@ def run_side_effects(
     label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
     """Run all of the side-effect functions registered for a label."""
-    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-
-def run_side_effects_on_commit(
-    label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-) -> None:
-    """Run all of the side-effects after current transaction on_commit."""
-    transaction.on_commit(
-        partial(
-            _registry.run_side_effects,
-            label,
-            *args,
-            return_value=return_value,
-            **kwargs,
+    # if the registry is suppressed we are inside  disable_side_effects,
+    # so we send the signal and return early.
+    if _registry.is_suppressed:
+        suppressed_side_effect.send(Registry, label=label)
+    else:
+        transaction.on_commit(
+            partial(
+                _registry.run_side_effects,
+                label,
+                *args,
+                return_value=return_value,
+                **kwargs,
+            )
         )
-    )
 
 
 def _run_func(
