@@ -9,9 +9,9 @@ from functools import partial
 from typing import Any, Callable, Dict, List
 
 from django.db import transaction
+from django.dispatch import Signal
 
 from . import settings
-from .signals import suppressed_side_effect
 
 RegistryType = Dict[str, List[Callable]]
 logger = logging.getLogger(__name__)
@@ -60,6 +60,12 @@ class Registry(defaultdict):
     a label.
 
     """
+
+    # if using the disable_side_effects context manager or decorator,
+    # then this signal is used to communicate details of events that
+    # would have fired, but have been suppressed.
+    # RemovedInDjango40Warning: providing_args=["label"]
+    suppressed_side_effect = Signal()
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -133,15 +139,15 @@ class disable_side_effects:
     """
 
     def __init__(self) -> None:
-        self.events = []  # type: List[str]
+        self.events: list[str] = []
 
     def __enter__(self) -> list[str]:
-        suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
+        _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
         _registry.disable()
         return self.events
 
     def __exit__(self, *args: Any) -> None:
-        suppressed_side_effect.disconnect(self.on_event)
+        _registry.suppressed_side_effect.disconnect(self.on_event)
         _registry.enable()
 
     def on_event(self, sender: Callable, **kwargs: Any) -> None:
@@ -162,7 +168,7 @@ def run_side_effects(
     # if the registry is suppressed we are inside  disable_side_effects,
     # so we send the signal and return early.
     if _registry.is_suppressed:
-        suppressed_side_effect.send(Registry, label=label)
+        _registry.suppressed_side_effect.send(Registry, label=label)
     else:
         transaction.on_commit(
             partial(

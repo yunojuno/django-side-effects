@@ -1,6 +1,7 @@
 .coverage
 .tox
 .venv
+.vscode
 *.egg-info
 *.lock
 *.pyc
