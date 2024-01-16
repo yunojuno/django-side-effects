@@ -1,9 +1,21 @@
 import pytest
+from django.core import mail
 from django.db import transaction
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from side_effects import registry
 from side_effects.decorators import has_side_effects
+
+
+def email_side_effect() -> None:
+    """Dummy function to simulate a side-effect."""
+    mail.send_mail(
+        "Subject",
+        "message.",
+        "from@example.com",
+        ["to@example.com"],
+        fail_silently=False,
+    )
 
 
 class TestTransactionOnCommit(TestCase):
@@ -72,3 +84,27 @@ class TestTransactionOnCommit(TestCase):
             with pytest.raises(Exception):
                 self.outer_rollback()
         assert callbacks == []
+
+
+class TestDisableSideEffectsOnCommit(TransactionTestCase):
+    """Integration test for the disable_side_effects context manager."""
+
+    def test_outbox_expected(self) -> None:
+        registry._registry.clear()
+        registry.register_side_effect("foo", email_side_effect)
+        with transaction.atomic():
+            registry.run_side_effects("foo")
+            # we are still inside the transaction, so the side-effect
+            # should not have fired yet.
+            assert len(mail.outbox) == 0
+        # now we are outside the transaction, so the side-effect should
+        # have fired.
+        assert len(mail.outbox) == 1
+
+    def test_disable_side_effects(self) -> None:
+        registry._registry.clear()
+        registry.register_side_effect("foo", email_side_effect)
+        with registry.disable_side_effects() as events:
+            registry.run_side_effects("foo")
+        assert events == ["foo"]
+        assert len(mail.outbox) == 0
