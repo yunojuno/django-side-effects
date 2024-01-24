@@ -67,6 +67,11 @@ class Registry(defaultdict):
     # RemovedInDjango40Warning: providing_args=["label"]
     suppressed_side_effect = Signal()
 
+    # fired when the call to run_side_effects is made, used
+    # to capture the side-effects that have been run.
+    # RemovedInDjango40Warning: providing_args=["label"]
+    on_run_side_effects = Signal()
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._suppress = False
@@ -154,6 +159,24 @@ class disable_side_effects:
         self.events.append(kwargs["label"])
 
 
+# alias used for testing purposes
+class capture_side_effects:
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def __enter__(self) -> list[str]:
+        _registry.on_run_side_effects.connect(
+            self.on_event, dispatch_uid="run_side_effects"
+        )
+        return self.events
+
+    def __exit__(self, *args: Any) -> None:
+        _registry.suppressed_side_effect.disconnect(self.on_event)
+
+    def on_event(self, sender: Callable, **kwargs: Any) -> None:
+        self.events.append(kwargs["label"])
+
+
 def register_side_effect(label: str, func: Callable) -> None:
     """Add a side-effect function to the registry."""
     if func in _registry[label]:
@@ -179,6 +202,8 @@ def run_side_effects(
                 **kwargs,
             )
         )
+    # always fired, regardless
+    _registry.on_run_side_effects.send(Registry, label=label)
 
 
 def _run_func(

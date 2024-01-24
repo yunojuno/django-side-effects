@@ -85,6 +85,21 @@ class TestTransactionOnCommit(TestCase):
                 self.outer_rollback()
         assert callbacks == []
 
+    def test_on_commit__rollback(self) -> None:
+        registry._registry.clear()
+        registry.register_side_effect("foo", email_side_effect)
+        try:
+            mail.outbox = []
+            with transaction.atomic():
+                # defers the call to Registry.run_side_effects until
+                # the transaction is committed.
+                registry.run_side_effects("foo")
+                # this will cause the transaction to rollback, and
+                # therefore the side-effect should not fire.
+                raise Exception("Rolling back transaction")
+        except Exception:
+            assert len(mail.outbox) == 0
+
 
 class TestDisableSideEffectsOnCommit(TransactionTestCase):
     """Integration test for the disable_side_effects context manager."""
@@ -93,6 +108,7 @@ class TestDisableSideEffectsOnCommit(TransactionTestCase):
         registry._registry.clear()
         registry.register_side_effect("foo", email_side_effect)
         with transaction.atomic():
+            mail.outbox = []
             registry.run_side_effects("foo")
             # we are still inside the transaction, so the side-effect
             # should not have fired yet.
@@ -105,6 +121,16 @@ class TestDisableSideEffectsOnCommit(TransactionTestCase):
         registry._registry.clear()
         registry.register_side_effect("foo", email_side_effect)
         with registry.disable_side_effects() as events:
+            mail.outbox = []
             registry.run_side_effects("foo")
         assert events == ["foo"]
         assert len(mail.outbox) == 0
+
+    def test_capture_side_effects(self) -> None:
+        registry._registry.clear()
+        registry.register_side_effect("foo", email_side_effect)
+        with transaction.atomic(), registry.capture_side_effects() as events:
+            mail.outbox = []
+            registry.run_side_effects("foo")
+        assert len(mail.outbox) == 1
+        assert events == ["foo"]
