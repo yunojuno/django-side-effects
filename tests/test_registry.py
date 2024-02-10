@@ -113,16 +113,6 @@ class RegistryFunctionTests(TestCase):
         registry._registry.run_side_effects("foo", x)
         assert x == ["foo"]
 
-    @mock.patch("side_effects.registry.settings.TEST_MODE_FAIL", True)
-    def test_run_side_effects__test_mode_fail(self) -> None:
-        def test_func() -> None:
-            pass
-
-        registry.register_side_effect("foo", test_func)
-        self.assertRaises(
-            registry.SideEffectsTestFailure, registry._registry.run_side_effects, "foo"
-        )
-
     def test__run_func__no_return_value(self) -> None:
         """Test the _run_func function does not pass return_value if not required."""
 

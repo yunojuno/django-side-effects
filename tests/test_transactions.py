@@ -125,12 +125,3 @@ class TestDisableSideEffectsOnCommit(TransactionTestCase):
             registry.run_side_effects("foo")
         assert events == ["foo"]
         assert len(mail.outbox) == 0
-
-    def test_capture_side_effects(self) -> None:
-        registry._registry.clear()
-        registry.register_side_effect("foo", email_side_effect)
-        with transaction.atomic(), registry.capture_side_effects() as events:
-            mail.outbox = []
-            registry.run_side_effects("foo")
-        assert len(mail.outbox) == 1
-        assert events == ["foo"]

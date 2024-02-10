@@ -31,11 +31,6 @@ def docstring(func: Callable) -> list[str] | None:
         return None
 
 
-class SideEffectsTestFailure(Exception):
-    def __init__(self, label: str):
-        super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
-
-
 class SignatureMismatch(Exception):
     def __init__(self, func: Callable):
         super().__init__(
@@ -66,11 +61,6 @@ class Registry(defaultdict):
     # would have fired, but have been suppressed.
     # RemovedInDjango40Warning: providing_args=["label"]
     suppressed_side_effect = Signal()
-
-    # fired when the call to run_side_effects is made, used
-    # to capture the side-effects that have been run.
-    # RemovedInDjango40Warning: providing_args=["label"]
-    on_run_side_effects = Signal()
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -125,8 +115,6 @@ class Registry(defaultdict):
         self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
         """Run all registered side-effects functions."""
-        if settings.TEST_MODE_FAIL:
-            raise SideEffectsTestFailure(label)
         for func in self[label]:
             _run_func(func, *args, return_value=return_value, **kwargs)
 
@@ -159,24 +147,6 @@ class disable_side_effects:
         self.events.append(kwargs["label"])
 
 
-# alias used for testing purposes
-class capture_side_effects:
-    def __init__(self) -> None:
-        self.events: list[str] = []
-
-    def __enter__(self) -> list[str]:
-        _registry.on_run_side_effects.connect(
-            self.on_event, dispatch_uid="run_side_effects"
-        )
-        return self.events
-
-    def __exit__(self, *args: Any) -> None:
-        _registry.suppressed_side_effect.disconnect(self.on_event)
-
-    def on_event(self, sender: Callable, **kwargs: Any) -> None:
-        self.events.append(kwargs["label"])
-
-
 def register_side_effect(label: str, func: Callable) -> None:
     """Add a side-effect function to the registry."""
     if func in _registry[label]:
@@ -202,8 +172,6 @@ def run_side_effects(
                 **kwargs,
             )
         )
-    # always fired, regardless
-    _registry.on_run_side_effects.send(Registry, label=label)
 
 
 def _run_func(
@@ -223,7 +191,7 @@ def _run_func(
         raise
     except Exception:  # noqa: B902
         logger.exception("Error running side_effect function '%s'", fname(func))
-        if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
+        if settings.ABORT_ON_ERROR:
             raise
 
 
