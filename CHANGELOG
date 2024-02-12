@@ -1,0 +1,8 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## 3.0 - 2024-02-12
+
+- Refactor internals to fix transaction handling
+- Remove TEST_MODE_FAIL setting
