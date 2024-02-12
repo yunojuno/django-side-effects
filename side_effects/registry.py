@@ -31,11 +31,6 @@ def docstring(func: Callable) -> list[str] | None:
         return None
 
 
-class SideEffectsTestFailure(Exception):
-    def __init__(self, label: str):
-        super().__init__(f"Side-effects for '{label}' aborted; TEST_MODE_FAIL=True")
-
-
 class SignatureMismatch(Exception):
     def __init__(self, func: Callable):
         super().__init__(
@@ -116,52 +111,12 @@ class Registry(defaultdict):
     def enable(self) -> None:
         self._suppress = False
 
-    def _run_side_effects(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        if settings.TEST_MODE_FAIL:
-            raise SideEffectsTestFailure(label)
-        for func in self[label]:
-            _run_func(func, *args, return_value=return_value, **kwargs)
-
     def run_side_effects(
         self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
     ) -> None:
-        """
-        Run registered side-effects functions, or suppress as appropriate.
-
-        If TEST_MODE is on, or the _suppress attr is True, then the side-effects
-        are not run, but the `suppressed_side_effect` signal is sent - this is
-        primarily used by the disable_side_effects context manager to register
-        which side-effects events were suppressed (for testing purposes).
-
-        NB even if the side-effects themselves are not run, this method will try
-        to bind all of the receiver functions - this is to ensure that incompatible
-        functions fail hard and early.
-
-        """
-        # TODO: this is all becoming over-complex - need to simplify this
-        self.try_bind_all(label, *args, return_value=return_value, **kwargs)
-        if self.is_suppressed:
-            self.suppressed_side_effect.send(Registry, label=label)
-        else:
-            self._run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-    def try_bind_all(
-        self, label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-    ) -> None:
-        """
-        Test all receivers for signature compatibility.
-
-        Raise SignatureMismatch if any function does not match.
-
-        """
+        """Run all registered side-effects functions."""
         for func in self[label]:
-            if not (
-                try_bind(func, *args, return_value=return_value, **kwargs)
-                or try_bind(func, *args, **kwargs)
-            ):
-                raise SignatureMismatch(func)
+            _run_func(func, *args, return_value=return_value, **kwargs)
 
 
 class disable_side_effects:
@@ -177,8 +132,7 @@ class disable_side_effects:
     """
 
     def __init__(self) -> None:
-        self.events = []  # type: List[str]
-        pass
+        self.events: list[str] = []
 
     def __enter__(self) -> list[str]:
         _registry.suppressed_side_effect.connect(self.on_event, dispatch_uid="suppress")
@@ -204,22 +158,20 @@ def run_side_effects(
     label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
     """Run all of the side-effect functions registered for a label."""
-    _registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
-
-
-def run_side_effects_on_commit(
-    label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
-) -> None:
-    """Run all of the side-effects after current transaction on_commit."""
-    transaction.on_commit(
-        partial(
-            _registry.run_side_effects,
-            label,
-            *args,
-            return_value=return_value,
-            **kwargs,
+    # if the registry is suppressed we are inside  disable_side_effects,
+    # so we send the signal and return early.
+    if _registry.is_suppressed:
+        _registry.suppressed_side_effect.send(Registry, label=label)
+    else:
+        transaction.on_commit(
+            partial(
+                _registry.run_side_effects,
+                label,
+                *args,
+                return_value=return_value,
+                **kwargs,
+            )
         )
-    )
 
 
 def _run_func(
@@ -239,7 +191,7 @@ def _run_func(
         raise
     except Exception:  # noqa: B902
         logger.exception("Error running side_effect function '%s'", fname(func))
-        if settings.ABORT_ON_ERROR or settings.TEST_MODE_FAIL:
+        if settings.ABORT_ON_ERROR:
             raise
 
 

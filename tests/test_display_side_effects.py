@@ -7,13 +7,13 @@ from side_effects.management.commands.display_side_effects import sort_events
 
 class SortEventsTests(TestCase):
     def test_sort_events(self) -> None:
-        def handler_zero():
+        def handler_zero() -> None:
             """Docstring 0."""
 
-        def handler_one():
+        def handler_one() -> None:
             """Docstring 1."""
 
-        def handler_two():
+        def handler_two() -> None:
             """Docstring 2."""
 
         events = {

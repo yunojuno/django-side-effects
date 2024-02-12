@@ -1,17 +1,19 @@
+from typing import Any
+
 from django.test import TestCase
 
 from side_effects import checks, registry
 
 
 class SystemCheckTests(TestCase):
-    def test_multiple_functions(self):
-        def foo():
+    def test_multiple_functions(self) -> None:
+        def foo() -> None:
             pass
 
-        def bar():
+        def bar() -> None:
             pass
 
-        def baz(arg1):
+        def baz(arg1: Any) -> None:
             pass
 
         registry._registry.clear()

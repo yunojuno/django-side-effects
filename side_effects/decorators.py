@@ -6,7 +6,6 @@ from typing import Any, Callable
 from django.http import HttpResponse
 
 from . import registry
-from .settings import TEST_MODE
 
 
 def http_response_check(response: HttpResponse) -> bool:
@@ -63,14 +62,7 @@ def has_side_effects(
             # if the exit test fails we go no further
             if not run_on_exit(return_value):
                 return return_value
-            # when in TEST_MODE do not defer the side-effects, as they
-            # are never fired anyway.
-            registry_func = (
-                registry.run_side_effects
-                if TEST_MODE
-                else registry.run_side_effects_on_commit
-            )
-            registry_func(label, *args, return_value=return_value, **kwargs)
+            registry.run_side_effects(label, *args, return_value=return_value, **kwargs)
             return return_value
 
         return inner_func
