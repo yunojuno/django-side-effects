@@ -102,6 +102,13 @@ class RegistryFunctionTests(TestCase):
         registry.register_side_effect("foo", test_func1)
         self.assertTrue(registry._registry.contains("foo", test_func1))
 
+    def test_get_side_effects(self) -> None:
+        def test_func1() -> None:
+            pass
+
+        registry.register_side_effect("foo", test_func1)
+        self.assertEqual(registry.get_side_effects("foo"), [test_func1])
+
     @mock.patch("side_effects.registry.settings.TEST_MODE", False)
     def test_run_side_effects(self) -> None:
         def test_func(x: list) -> None:

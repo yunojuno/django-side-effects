@@ -154,6 +154,10 @@ def register_side_effect(label: str, func: Callable) -> None:
     _registry.add(label, func)
 
 
+def get_side_effects(label: str) -> List[Callable]:
+    return _registry[label]
+
+
 def run_side_effects(
     label: str, *args: Any, return_value: Any | None = None, **kwargs: Any
 ) -> None:
