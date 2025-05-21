@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.1.0 - 2024-08-11
+
+- Add Django 5.2 compatibility
+- Drop support for Django versions before 4.2
+- Update ruff commands to use modern "ruff check" syntax
+- Update GitHub workflows to test Django main branch only with Python 3.12+
+
 ## 3.0 - 2024-02-12
 
 - Refactor internals to fix transaction handling
