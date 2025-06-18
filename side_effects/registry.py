@@ -1,4 +1,5 @@
 """Registry is responsible for managing all of the registered side-effects."""
+
 from __future__ import annotations
 
 import inspect

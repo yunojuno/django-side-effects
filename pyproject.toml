@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-side-effects"
-version = "3.0.1"
+version = "3.1.0"
 description = "Django app for managing external side effects."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]
@@ -10,11 +10,9 @@ homepage = "https://github.com/yunojuno/django-side-effects"
 repository = "https://github.com/yunojuno/django-side-effects"
 classifiers = [
     "Environment :: Web Environment",
-    "Framework :: Django :: 3.2",
-    "Framework :: Django :: 4.0",
-    "Framework :: Django :: 4.1",
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.2",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.9",
@@ -26,7 +24,7 @@ packages = [{ include = "side_effects" }]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-django = "^3.2 || ^4.0 || ^5.0 "
+django = "^4.2 || ^5.0 || ^5.2"
 
 [tool.poetry.dev-dependencies]
 coverage = "*"
