@@ -4,7 +4,7 @@ Django app for managing external side effects.
 
 ## Compatibility
 
-**This project now supports Python 3.9+ and Django 4.2+ only on master.**
+**This project now supports Python 3.12+ and Django 5.2-6.0 on master.**
 
 Legacy versions are tagged.
 
